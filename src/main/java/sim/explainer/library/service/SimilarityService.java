@@ -26,8 +26,6 @@ import sim.explainer.library.framework.descriptiontree.TreeBuilder;
 import sim.explainer.library.framework.explainer.BacktraceTable;
 import sim.explainer.library.framework.reasoner.DynamicALEHSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicALEHSimReasonerImpl;
-import sim.explainer.library.framework.reasoner.DynamicFL0SimPiReasonerImpl;
-import sim.explainer.library.framework.reasoner.DynamicFL0SimReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicProgrammingSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicProgrammingSimReasonerImpl;
 import sim.explainer.library.framework.reasoner.IReasoner;
@@ -94,8 +92,6 @@ public class SimilarityService {
         this.dynamicALEHSimReasonerImpl = new DynamicALEHSimReasonerImpl(preferenceProfile, superRoleUnfolderManchesterSyntax, subRoleUnfolderManchesterSyntax); 
         this.topDownFL0SimReasonerImpl = new TopDownFL0SimReasonerImpl();
         this.topDownFL0SimPiReasonerImpl = new TopDownFL0SimPiReasonerImpl(preferenceProfile);
-        this.dynamicFL0SimReasonerImpl = new DynamicFL0SimReasonerImpl();
-        this.dynamicFL0SimPiReasonerImpl = new DynamicFL0SimPiReasonerImpl(preferenceProfile);
 
         this.topDownSimReasonerImpl = new TopDownSimReasonerImpl(preferenceProfile);
         this.topDownSimPiReasonerImpl = new TopDownSimPiReasonerImpl(preferenceProfile);
