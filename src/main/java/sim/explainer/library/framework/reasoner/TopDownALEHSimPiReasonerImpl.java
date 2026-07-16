@@ -79,25 +79,34 @@ public class TopDownALEHSimPiReasonerImpl implements IReasoner {
     private BigDecimal sHat(String x, String y) {
         if (x.equals(y)) return ONE;
 
-        // handle negation: ŝ(¬A, B) = 1 - ŝ(A, B)
         boolean xNegated = x.startsWith("NOT_");
         boolean yNegated = y.startsWith("NOT_");
 
         String cleanX = xNegated ? x.substring(4) : x;
         String cleanY = yNegated ? y.substring(4) : y;
 
-        BigDecimal base = null;
+        BigDecimal base;
+        boolean found;
+
         if (cleanX.equals(cleanY)) {
             base = ONE;
+            found = true;
         } else {
             Map<String, Map<String, BigDecimal>> simMap = preferenceProfile.getPrimitiveConceptsSimilarity();
             base = ZERO;
+            found = false;
             if (simMap != null && simMap.containsKey(cleanX) && simMap.get(cleanX) != null) {
                 BigDecimal v = simMap.get(cleanX).get(cleanY);
-                if (v != null) base = v;
+                if (v != null) {
+                    base = v;
+                    found = true;
+                }
             }
         }
-        if (xNegated != yNegated) base = ONE.subtract(base);
+        if (xNegated != yNegated && found) {
+            base = ONE.subtract(base);
+        }
+
         return base.max(ZERO);
     }
 
