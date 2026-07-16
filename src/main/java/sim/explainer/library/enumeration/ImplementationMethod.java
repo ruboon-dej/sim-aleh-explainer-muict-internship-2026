@@ -8,7 +8,11 @@ public enum ImplementationMethod {
     DYNAMIC_ALEH_SIMPI("dynamic programming ALEH SimPi"),
     TOPDOWN_ALEH_SIMPI("top down ALEH SimPi"),
     DYNAMIC_ALEH_SIM("dynamic programming ALEH Sim"),
-    TOPDOWN_ALEH_SIM("top down ALEH Sim");
+    TOPDOWN_ALEH_SIM("top down ALEH Sim"),
+    DYNAMIC_FL0_SIM("dynamic programming FL0 Sim"),
+    DYNAMIC_FL0_SIMPI("dynamic programming FL0 SimPi"),
+    TOPDOWN_FL0_SIM("top down FL0 Sim"),
+    TOPDOWN_FL0_SIMPI("top down FL0 SimPi");
 
     private final String description;
 

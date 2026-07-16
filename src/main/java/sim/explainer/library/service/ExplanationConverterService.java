@@ -1,16 +1,18 @@
 package sim.explainer.library.service;
 
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.service.OpenAiService;
-import org.json.JSONObject;
-import org.springframework.stereotype.Service;
-import sim.explainer.library.exception.ErrorCode;
-import sim.explainer.library.exception.JSimPiException;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.json.JSONObject;
+import org.springframework.stereotype.Service;
+
+import com.theokanning.openai.completion.chat.ChatCompletionRequest;
+import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.service.OpenAiService;
+
+import sim.explainer.library.exception.ErrorCode;
+import sim.explainer.library.exception.JSimPiException;
 
 /**
  * The {@code ExplanationConverterService} class provides methods to convert explanations between concepts
@@ -19,9 +21,9 @@ import java.util.List;
  */
 @Service
 public class ExplanationConverterService {
-    private static OpenAiService openAiService = null;
-    private static int apiTimeout = 45;
-    private static String apiKey;
+    private OpenAiService openAiService = null;
+    private int apiTimeout = 45;
+    private String apiKey;
     private static final String GPT_MODEL = "gpt-4o-mini";
 
     private static final String SYSTEM_SUBTREE_MESSAGE = """
@@ -184,10 +186,8 @@ public class ExplanationConverterService {
      * @param apiTimeout the API timeout in seconds
      */
     public void setApiTimeout(int apiTimeout) {
-        ExplanationConverterService.apiTimeout = apiTimeout;
-
+        this.apiTimeout = apiTimeout;
         openAiService = new OpenAiService(apiKey, Duration.ofSeconds(this.apiTimeout));
-        System.out.println("Connected to OpenAI!");
     }
 
     /**
@@ -208,7 +208,7 @@ public class ExplanationConverterService {
      * @param explanation the explanation in JSON format
      * @return the converted explanation in JSON format
      */
-    public static JSONObject convertExplanationSubtree(JSONObject explanation) {
+    public JSONObject convertExplanationSubtree(JSONObject explanation) {
         JSONObject result = new JSONObject();
 
         result.put("comparingConcept1", explanation.getString("comparingConcept1"));
@@ -239,7 +239,7 @@ public class ExplanationConverterService {
      * @param explanation the explanation in JSON format
      * @return the converted explanation in JSON format
      */
-    public static JSONObject convertExplanationWholeTree(JSONObject explanation) {
+    public JSONObject convertExplanationWholeTree(JSONObject explanation) {
         JSONObject explanationSubtree = convertExplanationSubtree(explanation);
 
         String response = sendMessage(SYSTEM_WHOLETREE_MESSAGE, explanationSubtree.toString(2));
@@ -257,9 +257,9 @@ public class ExplanationConverterService {
      * @param explanation the explanation in JSON format
      * @return the converted explanation in JSON format
      */
-    public static JSONObject convertExplanationBiDirectionTree(JSONObject explanation) {
-        JSONObject forward_explanation = ExplanationConverterService.convertExplanationWholeTree(explanation.getJSONObject("forward"));
-        JSONObject backward_explanation = ExplanationConverterService.convertExplanationWholeTree(explanation.getJSONObject("backward"));
+    public JSONObject convertExplanationBiDirectionTree(JSONObject explanation) {
+        JSONObject forward_explanation = convertExplanationWholeTree(explanation.getJSONObject("forward"));
+        JSONObject backward_explanation = convertExplanationWholeTree(explanation.getJSONObject("backward"));
 
         JSONObject result = new JSONObject();
         result.put("similarity", explanation.getBigDecimal("similarity"));
@@ -281,7 +281,7 @@ public class ExplanationConverterService {
      * @return the response from the OpenAI API
      * @throws JSimPiException if the OpenAI API key is not provided
      */
-    private static String sendMessage(String system_message, String message) {
+    private String sendMessage(String system_message, String message) {
         if (openAiService == null) {
             throw new JSimPiException("Please Provide an OpenAI API Key.", ErrorCode.ExplanationConverterService_NoConfiguration);
         }

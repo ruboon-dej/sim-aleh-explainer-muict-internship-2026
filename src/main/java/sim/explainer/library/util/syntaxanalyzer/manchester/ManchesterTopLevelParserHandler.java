@@ -47,9 +47,10 @@ public class ManchesterTopLevelParserHandler extends ParserHandler {
         // If there exist parenthesises, we need to simplify them before extraction
         if (beginParenthesis > -1) {
 
+            String group = StringUtils.substring(compactFormat, beginParenthesis, lastParenthesis + 1);
+
             // If compactFormat contains existential restrictions
-            if (StringUtils.contains(compactFormat, EXISTENTIAL_RESTRICTION_SYMBOL)) {
-                String group = StringUtils.substring(compactFormat, beginParenthesis, lastParenthesis + 1);
+            if (StringUtils.contains(group, EXISTENTIAL_RESTRICTION_SYMBOL)) {
 
                 // Transform to String literals
                 String groupStr = StringUtils.replacePattern(group, "\\(", "\\\\(");
@@ -104,8 +105,7 @@ public class ManchesterTopLevelParserHandler extends ParserHandler {
 
                 }
             }
-            else if (StringUtils.contains(compactFormat, UNIVERSAL_RESTRICTION_SYMBOL)) {
-                String group = StringUtils.substring(compactFormat, beginParenthesis, lastParenthesis + 1);
+            else if (StringUtils.contains(group, UNIVERSAL_RESTRICTION_SYMBOL)) {
                 String groupStr = StringUtils.replacePattern(group, "\\(", "\\\\(");
                 groupStr = StringUtils.replacePattern(groupStr, "\\)", "\\\\)");
                 String patternStr = PATTERN_NAME_ONLY + groupStr;

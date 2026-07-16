@@ -87,16 +87,17 @@ public class TopDownALEHSimPiReasonerImpl implements IReasoner {
         String cleanY = yNegated ? y.substring(4) : y;
 
         BigDecimal base = null;
-        Map<String, Map<String, BigDecimal>> simMap = preferenceProfile.getPrimitiveConceptsSimilarity();
-        if (simMap != null && simMap.containsKey(cleanX) && simMap.get(cleanX) != null) {
-            base = simMap.get(cleanX).get(cleanY);
+        if (cleanX.equals(cleanY)) {
+            base = ONE;
+        } else {
+            Map<String, Map<String, BigDecimal>> simMap = preferenceProfile.getPrimitiveConceptsSimilarity();
+            base = ZERO;
+            if (simMap != null && simMap.containsKey(cleanX) && simMap.get(cleanX) != null) {
+                BigDecimal v = simMap.get(cleanX).get(cleanY);
+                if (v != null) base = v;
+            }
         }
-        if (base == null) base = ZERO;
-
-        if (xNegated != yNegated) {
-            base = ONE.subtract(base);
-        }
-
+        if (xNegated != yNegated) base = ONE.subtract(base);
         return base.max(ZERO);
     }
 

@@ -3,6 +3,7 @@ package sim.explainer.library.framework.unfolding;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
@@ -32,20 +33,28 @@ public class SubRoleUnfolderKRSSSyntax implements ISubRoleUnfolder {
     private Set<String> unfold(String role, Set<String> subRoles) {
         subRoles.add(role);
 
+        // Replace the existing loop in unfold() inside SubRoleUnfolderKRSSSyntax.java
         for (Map.Entry<String, String> entry : fullRoleDefinitionMap.entrySet()) {
             String candidateRole = entry.getKey();
             String candidateDefinition = entry.getValue();
 
-            if (candidateDefinition.contains(role) && !subRoles.contains(candidateRole)) {
+            // Use \\b to ensure word boundaries (so 'base' does not match 'hasBase')
+            // We escape the role name to ensure no regex special characters in the role name cause errors
+            String regex = "\\b" + Pattern.quote(role) + "\\b";
+            
+            if (candidateDefinition.matches(".*" + regex + ".*") && !subRoles.contains(candidateRole)) {
                 unfold(candidateRole, subRoles);
             }
         }
 
+        // Do the exact same for the primitiveRoleDefinitionMap loop below it
         for (Map.Entry<String, String> entry : primitiveRoleDefinitionMap.entrySet()) {
             String candidateRole = entry.getKey();
             String candidateDefinition = entry.getValue();
 
-            if (candidateDefinition.contains(role) && !subRoles.contains(candidateRole)) {
+            String regex = "\\b" + Pattern.quote(role) + "\\b";
+            
+            if (candidateDefinition.matches(".*" + regex + ".*") && !subRoles.contains(candidateRole)) {
                 unfold(candidateRole, subRoles);
             }
         }

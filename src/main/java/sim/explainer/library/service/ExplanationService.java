@@ -1,7 +1,16 @@
 package sim.explainer.library.service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.stereotype.Service;
+
 import sim.explainer.library.enumeration.ReasoningDirectionConstant;
 import sim.explainer.library.exception.ErrorCode;
 import sim.explainer.library.exception.JSimPiException;
@@ -9,12 +18,6 @@ import sim.explainer.library.framework.descriptiontree.TreeNode;
 import sim.explainer.library.framework.explainer.BacktraceTable;
 import sim.explainer.library.framework.explainer.SimRecord;
 import sim.explainer.library.util.utilstructure.SymmetricPair;
-
-import java.math.BigDecimal;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import org.json.JSONObject;
 
 /**
  * Service class to provide explanation functionalities for similarity measures and reasoning.
@@ -24,6 +27,8 @@ public class ExplanationService {
     private BigDecimal similarity;
     private BacktraceTable forwardBacktraceTable;
     private BacktraceTable backwardBacktraceTable;
+    
+    private final ExplanationConverterService explanationConverterService;
 
     /**
      * Constructs an {@code ExplanationService} with the given similarity and backtrace tables.
@@ -32,10 +37,11 @@ public class ExplanationService {
      * @param forwardBacktraceTable the forward backtrace table
      * @param backwardBacktraceTable the backward backtrace table
      */
-    public ExplanationService(BigDecimal similarity, BacktraceTable forwardBacktraceTable, BacktraceTable backwardBacktraceTable) {
+    public ExplanationService(BigDecimal similarity, BacktraceTable forwardBacktraceTable, BacktraceTable backwardBacktraceTable, ExplanationConverterService explanationConverterService) {
         this.similarity = similarity;
         this.forwardBacktraceTable = forwardBacktraceTable;
         this.backwardBacktraceTable = backwardBacktraceTable;
+        this.explanationConverterService = explanationConverterService;
     }
 
     /**
@@ -178,7 +184,7 @@ public class ExplanationService {
         }
 
         TreeNode<Set<String>> root = levelMap.keySet().iterator().next().getFirst();
-        return ExplanationConverterService.convertExplanationWholeTree(buildExplanationTreeAsJson(backtraceTable, root, 0));
+        return explanationConverterService.convertExplanationWholeTree(buildExplanationTreeAsJson(backtraceTable, root, 0));
     }
 
     /**

@@ -67,7 +67,7 @@ public class DynamicALEHSimReasonerImpl extends TopDownALEHSimReasonerImpl {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     protected BigDecimal aSetHd(int level, SimRecord record,
-                                 TreeNode<Set<String>> node1, TreeNode<Set<String>> node2) {
+                                TreeNode<Set<String>> node1, TreeNode<Set<String>> node2) {
         List<TreeNode<Set<String>>> a1 = node1.getUniversalChildren();
         List<TreeNode<Set<String>>> a2 = node2.getUniversalChildren();
         if (a1.isEmpty()) return ONE;
@@ -81,9 +81,16 @@ public class DynamicALEHSimReasonerImpl extends TopDownALEHSimReasonerImpl {
                 String r = child1.getEdgeToParent();
                 String s = child2.getEdgeToParent();
                 BigDecimal gamma = aGamma(r, s);
-                BigDecimal d = dHat(r);
-                BigDecimal sub = getStoredSim(child1, child2);
-                BigDecimal val = gamma.multiply(d.add(ONE.subtract(d).multiply(sub)));
+                BigDecimal val;
+
+                if (child2.getData().contains("BOTTOM") || child2.getData().contains("⊥")) {
+                    val = gamma;
+                } else {
+                    BigDecimal d = dHat(r);
+                    BigDecimal sub = getStoredSim(child1, child2);
+                    val = gamma.multiply(d.add(ONE.subtract(d).multiply(sub)));
+                }
+
                 if (val.compareTo(max) > 0) { max = val; best = child2; }
             }
             sum = sum.add(max);

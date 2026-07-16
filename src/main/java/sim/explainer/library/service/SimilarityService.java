@@ -1,13 +1,19 @@
 package sim.explainer.library.service;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.semanticweb.owlapi.util.ShortFormProvider;
+import org.semanticweb.owlapi.util.SimpleShortFormProvider;
 import org.springframework.stereotype.Service;
 
+import sim.explainer.library.enumeration.CombinationStrategy;
 import sim.explainer.library.enumeration.FileTypeConstant;
 import sim.explainer.library.enumeration.ImplementationMethod;
 import sim.explainer.library.exception.ErrorCode;
@@ -20,11 +26,15 @@ import sim.explainer.library.framework.descriptiontree.TreeBuilder;
 import sim.explainer.library.framework.explainer.BacktraceTable;
 import sim.explainer.library.framework.reasoner.DynamicALEHSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicALEHSimReasonerImpl;
+import sim.explainer.library.framework.reasoner.DynamicFL0SimPiReasonerImpl;
+import sim.explainer.library.framework.reasoner.DynamicFL0SimReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicProgrammingSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicProgrammingSimReasonerImpl;
 import sim.explainer.library.framework.reasoner.IReasoner;
 import sim.explainer.library.framework.reasoner.TopDownALEHSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.TopDownALEHSimReasonerImpl;
+import sim.explainer.library.framework.reasoner.TopDownFL0SimPiReasonerImpl;
+import sim.explainer.library.framework.reasoner.TopDownFL0SimReasonerImpl;
 import sim.explainer.library.framework.reasoner.TopDownSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.TopDownSimReasonerImpl;
 import sim.explainer.library.framework.unfolding.ConceptDefinitionUnfolderKRSSSyntax;
@@ -41,6 +51,8 @@ import sim.explainer.library.framework.unfolding.SuperRoleUnfolderManchesterSynt
 public class SimilarityService {
 
     private final BigDecimal TWO = new BigDecimal("2");
+    private final OWLServiceContext owlServiceContext;
+    private final KRSSServiceContext krssServiceContext;
 
     private IReasoner topDownSimReasonerImpl;
     private IReasoner topDownSimPiReasonerImpl;
@@ -51,7 +63,11 @@ public class SimilarityService {
     private ISubRoleUnfolder subRoleUnfolderKRSSSyntax; 
     private ISubRoleUnfolder subRoleUnfolderManchesterSyntax; 
     private IReasoner topDownALEHSimReasonerImpl; 
-    private IReasoner dynamicALEHSimReasonerImpl; 
+    private IReasoner dynamicALEHSimReasonerImpl;
+    private IReasoner topDownFL0SimReasonerImpl;
+    private IReasoner topDownFL0SimPiReasonerImpl;
+    private IReasoner dynamicFL0SimReasonerImpl;
+    private IReasoner dynamicFL0SimPiReasonerImpl;
 
     private IConceptUnfolder conceptDefinitionUnfolderManchesterSyntax;
     private IConceptUnfolder conceptDefinitionUnfolderKRSSSyntax;
@@ -64,6 +80,8 @@ public class SimilarityService {
     private BacktraceTable backtraceTable_backward = new BacktraceTable();
 
     public SimilarityService(OWLServiceContext owlServiceContext, KRSSServiceContext krssServiceContext, PreferenceProfile preferenceProfile) {
+        this.owlServiceContext = owlServiceContext;
+        this.krssServiceContext = krssServiceContext;
         this.conceptDefinitionUnfolderManchesterSyntax = new ConceptDefinitionUnfolderManchesterSyntax(owlServiceContext);
         this.conceptDefinitionUnfolderKRSSSyntax = new ConceptDefinitionUnfolderKRSSSyntax(krssServiceContext);
         this.superRoleUnfolderManchesterSyntax = new SuperRoleUnfolderManchesterSyntax(owlServiceContext);
@@ -74,6 +92,10 @@ public class SimilarityService {
         this.dynamicALEHSimPiReasonerImpl = new DynamicALEHSimPiReasonerImpl(preferenceProfile, superRoleUnfolderKRSSSyntax, subRoleUnfolderKRSSSyntax); 
         this.topDownALEHSimReasonerImpl = new TopDownALEHSimReasonerImpl(preferenceProfile, superRoleUnfolderManchesterSyntax, subRoleUnfolderManchesterSyntax); 
         this.dynamicALEHSimReasonerImpl = new DynamicALEHSimReasonerImpl(preferenceProfile, superRoleUnfolderManchesterSyntax, subRoleUnfolderManchesterSyntax); 
+        this.topDownFL0SimReasonerImpl = new TopDownFL0SimReasonerImpl();
+        this.topDownFL0SimPiReasonerImpl = new TopDownFL0SimPiReasonerImpl(preferenceProfile);
+        this.dynamicFL0SimReasonerImpl = new DynamicFL0SimReasonerImpl();
+        this.dynamicFL0SimPiReasonerImpl = new DynamicFL0SimPiReasonerImpl(preferenceProfile);
 
         this.topDownSimReasonerImpl = new TopDownSimReasonerImpl(preferenceProfile);
         this.topDownSimPiReasonerImpl = new TopDownSimPiReasonerImpl(preferenceProfile);
@@ -95,6 +117,10 @@ public class SimilarityService {
     }
 
     private BigDecimal computeSimilarity(IReasoner iReasoner, IRoleUnfolder iRoleUnfolder, Tree<Set<String>> tree1, Tree<Set<String>> tree2) {
+        return computeSimilarity(iReasoner, iRoleUnfolder, tree1, tree2, CombinationStrategy.AVERAGE);
+    }
+
+    private BigDecimal computeSimilarity(IReasoner iReasoner, IRoleUnfolder iRoleUnfolder, Tree<Set<String>> tree1, Tree<Set<String>> tree2, CombinationStrategy strategy) {
         iReasoner.setRoleUnfoldingStrategy(iRoleUnfolder);
 
         BigDecimal forwardDistance = iReasoner.measureDirectedSimilarity(tree1, tree2);
@@ -102,7 +128,18 @@ public class SimilarityService {
         BigDecimal backwardDistance = iReasoner.measureDirectedSimilarity(tree2, tree1);
         this.backtraceTable_backward = iReasoner.getBacktraceTable();
 
-        return forwardDistance.add(backwardDistance).divide(TWO);
+        switch (strategy) {
+            case MULTIPLICATION:
+                return forwardDistance.multiply(backwardDistance);
+
+            case RMS:
+                BigDecimal sumOfSquares = forwardDistance.pow(2).add(backwardDistance.pow(2));
+                return sumOfSquares.divide(TWO, MathContext.DECIMAL64).sqrt(MathContext.DECIMAL64);
+
+            case AVERAGE:
+            default:
+                return forwardDistance.add(backwardDistance).divide(TWO, 5, BigDecimal.ROUND_HALF_UP);
+        }
     }
 
     /**
@@ -115,7 +152,10 @@ public class SimilarityService {
      * @return similarity degree of that concept pair
      */
     public BigDecimal measureConceptWithType(String conceptName1, String conceptName2, ImplementationMethod measurementType, FileTypeConstant conceptType) {
+        return measureConceptWithType(conceptName1, conceptName2, measurementType, conceptType, CombinationStrategy.AVERAGE);
+    }
 
+    public BigDecimal measureConceptWithType(String conceptName1, String conceptName2, ImplementationMethod measurementType, FileTypeConstant conceptType, CombinationStrategy strategy) {
         IConceptUnfolder conceptT;
         IRoleUnfolder roleUnfolderT;
         ISubRoleUnfolder subRoleUnfolderT; 
@@ -155,7 +195,15 @@ public class SimilarityService {
             reasonerT = topDownALEHSimReasonerImpl;
         } else if (measurementType == ImplementationMethod.DYNAMIC_ALEH_SIM) {  // ADD THIS
             reasonerT = dynamicALEHSimReasonerImpl;
-        } else {
+        } else if (measurementType == ImplementationMethod.TOPDOWN_FL0_SIM) {
+            reasonerT = topDownFL0SimReasonerImpl;
+        } else if (measurementType == ImplementationMethod.TOPDOWN_FL0_SIMPI) {
+            reasonerT = topDownFL0SimPiReasonerImpl;
+        } else if (measurementType == ImplementationMethod.DYNAMIC_FL0_SIM) {
+            reasonerT = dynamicFL0SimReasonerImpl;
+        } else if (measurementType == ImplementationMethod.DYNAMIC_FL0_SIMPI) {
+            reasonerT = dynamicFL0SimPiReasonerImpl;
+        }else {
             throw new JSimPiException("Unable measure with this approach.", ErrorCode.OWLSimService_IllegalArguments);
         }
 
@@ -166,10 +214,17 @@ public class SimilarityService {
             alehReasoner.setSubRoleUnfoldingStrategy(subRoleUnfolderT);
         }
 
+        if (reasonerT instanceof TopDownFL0SimReasonerImpl fl0Reasoner) {
+            fl0Reasoner.setPrimitiveConceptUniverse(retrieveAllConceptNames(conceptType));
+        }
+        if (reasonerT instanceof TopDownFL0SimPiReasonerImpl fl0PiReasoner) {
+            fl0PiReasoner.setPrimitiveConceptUniverse(retrieveAllConceptNames(conceptType));
+        }
+
         Tree<Set<String>> tree1 = unfoldAndConstructTree(conceptT, conceptName1);
         Tree<Set<String>> tree2 = unfoldAndConstructTree(conceptT, conceptName2);
 
-        result = computeSimilarity(reasonerT, roleUnfolderT, tree1, tree2);
+        result = computeSimilarity(reasonerT, roleUnfolderT, tree1, tree2, strategy);
 
         return result;
     }
@@ -179,5 +234,20 @@ public class SimilarityService {
         backtraceTables.add(backtraceTable_forward);
         backtraceTables.add(backtraceTable_backward);
         return backtraceTables;
+    }
+
+    private Set<String> retrieveAllConceptNames(FileTypeConstant conceptType) {
+        Set<String> names = new HashSet<>();
+        if (conceptType == FileTypeConstant.OWL_FILE) {
+            ShortFormProvider shortFormProvider = new SimpleShortFormProvider();
+            names.addAll(owlServiceContext.getOwlOntology().getClassesInSignature().stream()
+                    .map(shortFormProvider::getShortForm)
+                    .filter(className -> !className.equals("Thing"))
+                    .collect(Collectors.toSet()));
+        } else if (conceptType == FileTypeConstant.KRSS_FILE) {
+            names.addAll(krssServiceContext.getFullConceptDefinitionMap().keySet());
+            names.addAll(krssServiceContext.getPrimitiveConceptDefinitionMap().keySet());
+        }
+        return names;
     }
 }

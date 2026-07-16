@@ -38,6 +38,9 @@ public class PreferenceProfile {
         if (key == null || val == null) {
             throw new JSimPiException("Unable to add primitive concept importance as key[" + key + "] and val[" + val + "] are null.", ErrorCode.PreferenceProfile_IllegalArguments);
         }
+        if (val.compareTo(BigDecimal.ZERO) < 0) {
+            throw new JSimPiException("Unable to add primitive concept importance as key[" + key + "] is mapped to a negative number val[" + val + "].", ErrorCode.PreferenceProfile_NegativeNumberException);
+        }
 
 //        // Validate input
 //        boolean isFreshName = OWLOntologyUtil.isValidFreshConceptName(OWLServiceContext.getOwlDataFactory(), OWLServiceContext.getOwlOntologyManager(), OWLServiceContext.getOwlOntology(), key);
@@ -62,11 +65,15 @@ public class PreferenceProfile {
 
         // Invoke business logic
         this.primitiveConceptImportance.put(key, val);
+        this.primitiveConceptImportance.put(key + "'", val);
     }
 
     public void addRoleImportance(String key, BigDecimal val) {
         if (key == null || val == null) {
             throw new JSimPiException("Unable to add role importance as key[" + key + "] and val[" + val + "] are null.", ErrorCode.PreferenceProfile_IllegalArguments);
+        }
+        if (val.compareTo(BigDecimal.ZERO) < 0) {
+            throw new JSimPiException("Unable to add primitive role importance as key[" + key + "] is mapped to a negative number val[" + val + "].", ErrorCode.PreferenceProfile_NegativeNumberException);
         }
 
 //        // Validate input
@@ -86,11 +93,15 @@ public class PreferenceProfile {
 
         // Invoke business logic
         this.roleImportance.put(key, val);
+        this.roleImportance.put(key + "'", val);
     }
 
-    public void addPrimitveConceptsSimilarity(String key1, String key2, BigDecimal val) {
+    public void addPrimitiveConceptsSimilarity(String key1, String key2, BigDecimal val) {
         if (key1 == null || key2 == null || val == null) {
             throw new JSimPiException("Unable to add primitive concepts similarity as key1[" + key1 + "], key2[" + key2 + "], and val[" + val + "] are null.", ErrorCode.PreferenceProfile_IllegalArguments);
+        }
+        if (val.compareTo(BigDecimal.ZERO) < 0) {
+            throw new JSimPiException("Unable to add primitive concepts similarity as key1[" + key1 + "] and key2[" + key2 + "] are mapped to a negative number val[" + val + "].", ErrorCode.PreferenceProfile_NegativeNumberException);
         }
 
 //        // Validate input
@@ -129,25 +140,19 @@ public class PreferenceProfile {
 //        }
 
         // Invoke business logic
-        // teeradaj@20160328: Primitive concepts similarity must preserve the symmetric property.
-        Map<String, BigDecimal> subKeys1 = this.primitiveConceptsSimilarity.get(key1);
-        if (subKeys1 == null) {
-            subKeys1 = new HashMap<String, BigDecimal>();
-        }
-        subKeys1.put(key2, val);
-        this.primitiveConceptsSimilarity.put(key1, subKeys1);
-
-        Map<String, BigDecimal> subKeys2 = this.primitiveConceptsSimilarity.get(key2);
-        if (subKeys2 == null) {
-            subKeys2 = new HashMap<String, BigDecimal>();
-        }
-        subKeys2.put(key1, val);
-        this.primitiveConceptsSimilarity.put(key2, subKeys2);
+        putSymmetricConceptSim(key1, key2, val);
+        putSymmetricConceptSim(key1 + "'", key2, val);
+        putSymmetricConceptSim(key1, key2 + "'", val);
+        putSymmetricConceptSim(key1 + "'", key2 + "'", val);
     }
 
     public void addPrimitiveRolesSimilarity(String key1, String key2, BigDecimal val) {
         if (key1 == null || key2 == null || val == null) {
             throw new JSimPiException("Unable to add primitive roles similarity as key1[" + key1 + "], key2[" + key2 + "], and val[" + val + "] are null.", ErrorCode.PreferenceProfile_IllegalArguments);
+        }
+
+        if (val.compareTo(BigDecimal.ZERO) < 0) {
+            throw new JSimPiException("Unable to add primitive roles similarity as key1[" + key1 + "] and key2[" + key2 + "] are mapped to a negative number val[" + val + "].", ErrorCode.PreferenceProfile_NegativeNumberException);
         }
 
 //        // Validate input
@@ -187,25 +192,18 @@ public class PreferenceProfile {
 //        }
 
         // Invoke business logic
-        // teeradaj@20180328: Primitive roles similarity must preserve the symmetric property.
-        Map<String, BigDecimal> subKeys1 = this.primitiveRolesSimilarity.get(key1);
-        if (subKeys1 == null) {
-            subKeys1 = new HashMap<String, BigDecimal>();
-        }
-        subKeys1.put(key2, val);
-        this.primitiveRolesSimilarity.put(key1, subKeys1);
-
-        Map<String, BigDecimal> subKeys2 = this.primitiveRolesSimilarity.get(key2);
-        if (subKeys2 == null) {
-            subKeys2 = new HashMap<String, BigDecimal>();
-        }
-        subKeys2.put(key1, val);
-        this.primitiveRolesSimilarity.put(key2, subKeys2);
+        putSymmetricRoleSim(key1, key2, val);
+        putSymmetricRoleSim(key1 + "'", key2, val);
+        putSymmetricRoleSim(key1, key2 + "'", val);
+        putSymmetricRoleSim(key1 + "'", key2 + "'", val);
     }
 
     public void addRoleDiscountFactor(String key, BigDecimal val) {
         if (key == null || val == null) {
             throw new JSimPiException("Unable to add role discount factor as key[" + key + "] and val[" + val + "] are null.", ErrorCode.PreferenceProfile_IllegalArguments);
+        }
+        if (val.compareTo(BigDecimal.ZERO) < 0) {
+            throw new JSimPiException("Unable to add primitive role importance as key[" + key + "] is mapped to a negative number val[" + val + "].", ErrorCode.PreferenceProfile_NegativeNumberException);
         }
 
 //        // Validate input
@@ -226,6 +224,7 @@ public class PreferenceProfile {
 //        }
 
         this.roleDiscountFactor.put(key, val);
+        this.roleDiscountFactor.put(key + "'", val);
     }
 
     public void setDefaultRoleDiscountFactor(BigDecimal roleDiscountFactor) {
@@ -239,6 +238,30 @@ public class PreferenceProfile {
         this.primitiveRolesSimilarity.clear();
         this.roleDiscountFactor.clear();
         this.defaultRoleDiscountFactor = BigDecimal.valueOf(0.4);
+    }
+
+    private void putSymmetricConceptSim(String k1, String k2, BigDecimal val) {
+        Map<String, BigDecimal> subKeys1 = this.primitiveConceptsSimilarity.get(k1);
+        if (subKeys1 == null) subKeys1 = new HashMap<>();
+        subKeys1.put(k2, val);
+        this.primitiveConceptsSimilarity.put(k1, subKeys1);
+
+        Map<String, BigDecimal> subKeys2 = this.primitiveConceptsSimilarity.get(k2);
+        if (subKeys2 == null) subKeys2 = new HashMap<>();
+        subKeys2.put(k1, val);
+        this.primitiveConceptsSimilarity.put(k2, subKeys2);
+    }
+
+    private void putSymmetricRoleSim(String k1, String k2, BigDecimal val) {
+        Map<String, BigDecimal> subKeys1 = this.primitiveRolesSimilarity.get(k1);
+        if (subKeys1 == null) subKeys1 = new HashMap<>();
+        subKeys1.put(k2, val);
+        this.primitiveRolesSimilarity.put(k1, subKeys1);
+
+        Map<String, BigDecimal> subKeys2 = this.primitiveRolesSimilarity.get(k2);
+        if (subKeys2 == null) subKeys2 = new HashMap<>();
+        subKeys2.put(k1, val);
+        this.primitiveRolesSimilarity.put(k2, subKeys2);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

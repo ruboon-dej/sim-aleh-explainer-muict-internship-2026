@@ -204,8 +204,10 @@ public class KRSSServiceContext {
                 }
 
                 // Otherwise, invoke business logic and reset the builder.
-                String wellFormedStr = builder.toString();
+                String wellFormedStr = builder.substring(0, lastMatchedParenthesis + 1);
+                String leftover = builder.substring(lastMatchedParenthesis + 1);
                 builder.setLength(0);
+                builder.append(leftover);
 
                 boolean hasFullConceptDefinition = instantiateAFullConceptDefinition(wellFormedStr);
                 boolean hasPrimitiveConceptDefinition = instantiateAPrimitiveConceptDefinition(wellFormedStr);

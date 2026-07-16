@@ -266,6 +266,10 @@ public class TopDownSimReasonerImpl implements IReasoner {
         Set<String> edgeSet1 = iRoleUnfolder.unfoldRoleHierarchy(edge1);
         Set<String> edgeSet2 = iRoleUnfolder.unfoldRoleHierarchy(edge2);
 
+        if (edgeSet1.isEmpty()) {
+            return BigDecimal.ONE;
+        }
+
         Set<String> intersection = Sets.intersection(edgeSet1, edgeSet2);
 
         StringBuilder builder1 = new StringBuilder().append(intersection.size());

@@ -1,16 +1,18 @@
 package sim.explainer.library.controller;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.stereotype.Controller;
+
+import sim.explainer.library.enumeration.CombinationStrategy;
 import sim.explainer.library.enumeration.FileTypeConstant;
-import sim.explainer.library.framework.explainer.BacktraceTable;
-import sim.explainer.library.service.SimilarityService;
-import sim.explainer.library.service.ValidationService;
 import sim.explainer.library.enumeration.ImplementationMethod;
 import sim.explainer.library.exception.ErrorCode;
 import sim.explainer.library.exception.JSimPiException;
-
-import java.math.BigDecimal;
-import java.util.List;
+import sim.explainer.library.framework.explainer.BacktraceTable;
+import sim.explainer.library.service.SimilarityService;
+import sim.explainer.library.service.ValidationService;
 
 /**
  * Controller for measuring similarity between OWL concepts.
@@ -57,6 +59,10 @@ public class OWLSimilarityController {
      * @throws JSimPiException if any of the concept names are null or invalid
      */
     public BigDecimal measureSimilarity(String conceptName1, String conceptName2, ImplementationMethod type, FileTypeConstant fileType) {
+        return measureSimilarity(conceptName1, conceptName2, type, fileType, CombinationStrategy.AVERAGE);
+    }
+
+    public BigDecimal measureSimilarity(String conceptName1, String conceptName2, ImplementationMethod type, FileTypeConstant fileType, CombinationStrategy strategy) {
         if (conceptName1 == null || conceptName2 == null) {
             throw new JSimPiException("Unable to measure similarity with " + type.getDescription() + " as conceptName1[" + conceptName1
                     + "] and conceptName2[" + conceptName2 + "] are null.",
@@ -65,7 +71,7 @@ public class OWLSimilarityController {
 
         validateInputs(conceptName1, conceptName2);
 
-        return similarityService.measureConceptWithType(conceptName1, conceptName2, type, fileType);
+        return similarityService.measureConceptWithType(conceptName1, conceptName2, type, fileType, strategy);
     }
 
     /**

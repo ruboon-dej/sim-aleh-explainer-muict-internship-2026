@@ -13,7 +13,7 @@ import javax.annotation.Resource;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
 import sim.explainer.library.exception.ErrorCode;
 import sim.explainer.library.exception.JSimPiException;
@@ -27,7 +27,7 @@ import sim.explainer.library.util.MyStringUtils;
 import sim.explainer.library.util.TimeUtils;
 import sim.explainer.library.util.utilstructure.SymmetricPair;
 
-@Qualifier
+@Component("topDownSimReasonerImpl")
 public class TopDownSimPiReasonerImpl implements IReasoner {
 
     private static final Logger logger = LoggerFactory.getLogger(TopDownSimPiReasonerImpl.class);
@@ -306,7 +306,7 @@ public class TopDownSimPiReasonerImpl implements IReasoner {
                 logger.debug("esethd pi: sumWeightedSimilarity \"Role\" [" + sum + "] divisor[" + divisor + "] = " + sum.divide(divisor, 5, BigDecimal.ROUND_UP));
             }
 
-            return sum.divide(divisor, 5, BigDecimal.ROUND_UP);
+            return sum.divide(divisor, 5, BigDecimal.ROUND_HALF_UP);
         }
     }
 

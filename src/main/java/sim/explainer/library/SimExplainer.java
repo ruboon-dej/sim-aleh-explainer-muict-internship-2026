@@ -21,6 +21,7 @@ import org.semanticweb.owlapi.util.SimpleShortFormProvider;
 
 import sim.explainer.library.controller.KRSSSimilarityController;
 import sim.explainer.library.controller.OWLSimilarityController;
+import sim.explainer.library.enumeration.CombinationStrategy;
 import sim.explainer.library.enumeration.FileTypeConstant;
 import sim.explainer.library.enumeration.ImplementationMethod;
 import sim.explainer.library.enumeration.ReasoningDirectionConstant;
@@ -49,8 +50,9 @@ public class SimExplainer {
     private final KRSSServiceContext krssServiceContext = new KRSSServiceContext();
     private final SimilarityService similarityService = new SimilarityService(owlServiceContext, krssServiceContext, preferenceProfile);
     private final ValidationService validationService = new ValidationService(owlServiceContext, krssServiceContext);
-    private static ExplanationConverterService explanationConverterService = new ExplanationConverterService();
-    private final HashMap<SymmetricPair<String>, ExplanationService> explanationMap = new HashMap<>();
+    private final ExplanationConverterService explanationConverterService = new ExplanationConverterService();
+    private record ExplanationKey(SymmetricPair<String> pair, ImplementationMethod method, CombinationStrategy strategy) {}
+    private final HashMap<ExplanationKey, ExplanationService> explanationMap = new HashMap<>();
 
     /**
      * Constructs a {@code SimExplainer} object and initializes it by loading ontologies and preference
@@ -227,12 +229,15 @@ public class SimExplainer {
      * @throws IOException if an I/O error occurs while reading the file
      */
     public void ReadInputPrimitiveConceptImportances(String pathToFile) throws IOException {
-        String[] primitiveConceptImportances = StringUtils.split(FileUtils.readFileToString(new File(pathToFile)), "\n");
-        for (String primitiveConceptImportance : primitiveConceptImportances) {
-            String[] str = StringUtils.split(primitiveConceptImportance);
-            preferenceProfile.addPrimitiveConceptImportance(str[0], new BigDecimal(str[1]));
+    String[] primitiveConceptImportances = StringUtils.split(FileUtils.readFileToString(new File(pathToFile)), "\n");
+    for (String primitiveConceptImportance : primitiveConceptImportances) {
+        String[] str = StringUtils.split(primitiveConceptImportance);
+        if (str.length < 2) {
+            throw new JSimPiException("Malformed line in [" + pathToFile + "]: " + primitiveConceptImportance, ErrorCode.Application_IllegalArguments);
         }
+        preferenceProfile.addPrimitiveConceptImportance(str[0], new BigDecimal(str[1]));
     }
+}
 
     /**
      * Reads role importances from the specified file and adds them to the preference profile.
@@ -244,6 +249,9 @@ public class SimExplainer {
         String[] roleImportances = StringUtils.split(FileUtils.readFileToString(new File(pathToFile)), "\n");
         for (String roleImportance : roleImportances) {
             String[] str = StringUtils.split(roleImportance);
+            if (str.length < 2) { // or < 3 for the similarity files
+                throw new JSimPiException("Malformed line in [" + pathToFile + "]: " + roleImportance, ErrorCode.Application_IllegalArguments);
+            }
             preferenceProfile.addRoleImportance(str[0], new BigDecimal(str[1]));
         }
     }
@@ -258,7 +266,10 @@ public class SimExplainer {
         String[] primitiveConceptsSimilarities = StringUtils.split(FileUtils.readFileToString(new File(pathToFile)), "\n");
         for (String primitiveConceptsSimilarity : primitiveConceptsSimilarities) {
             String[] str = StringUtils.split(primitiveConceptsSimilarity);
-            preferenceProfile.addPrimitveConceptsSimilarity(str[0], str[1], new BigDecimal(str[2]));
+            if (str.length < 3) {
+                throw new JSimPiException("Malformed line in [" + pathToFile + "]: " + primitiveConceptsSimilarity, ErrorCode.Application_IllegalArguments);
+            }
+            preferenceProfile.addPrimitiveConceptsSimilarity(str[0], str[1], new BigDecimal(str[2]));
         }
     }
 
@@ -272,6 +283,9 @@ public class SimExplainer {
         String[] primitiveRolesSimilarities = StringUtils.split(FileUtils.readFileToString(new File(pathToFile)), "\n");
         for (String primitiveRolesSimilarity : primitiveRolesSimilarities) {
             String[] str = StringUtils.split(primitiveRolesSimilarity);
+            if (str.length < 3) {
+                throw new JSimPiException("Malformed line in [" + pathToFile + "]: " + primitiveRolesSimilarity, ErrorCode.Application_IllegalArguments);
+            }
             preferenceProfile.addPrimitiveRolesSimilarity(str[0], str[1], new BigDecimal(str[2]));
         }
     }
@@ -286,6 +300,9 @@ public class SimExplainer {
         String[] roleDiscountFactors = StringUtils.split(FileUtils.readFileToString(new File(pathToFile)), "\n");
         for (String roleDiscountFactor : roleDiscountFactors) {
             String[] str = StringUtils.split(roleDiscountFactor);
+            if (str.length < 2) {
+                throw new JSimPiException("Malformed line in [" + pathToFile + "]: " + roleDiscountFactor, ErrorCode.Application_IllegalArguments);
+            }
             preferenceProfile.addRoleDiscountFactor(str[0], new BigDecimal(str[1]));
         }
     }
@@ -304,6 +321,7 @@ public class SimExplainer {
      */
     public void resetPreferenceProfile() {
         preferenceProfile.reset();
+        explanationMap.clear();
     }
 
     /**
@@ -316,6 +334,10 @@ public class SimExplainer {
      * @throws JSimPiException if any of the arguments are null or if the file type is not supported
      */
     public BigDecimal similarity(ImplementationMethod optionVal, String concept1, String concept2) {
+        return similarity(optionVal, concept1, concept2, CombinationStrategy.AVERAGE);
+    }
+
+    public BigDecimal similarity(ImplementationMethod optionVal, String concept1, String concept2, CombinationStrategy strategy) {
         if (optionVal == null) {
             throw new JSimPiException("Option not provided", ErrorCode.Application_IllegalArguments);
         }
@@ -323,31 +345,26 @@ public class SimExplainer {
             throw new JSimPiException("Concept not provided", ErrorCode.Application_IllegalArguments);
         }
 
-        // result variable
         BigDecimal result;
-
         SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
+        ExplanationKey key = new ExplanationKey(pair, optionVal, strategy);
 
-        if (explanationMap.containsKey(pair)) {
-            return explanationMap.get(pair).getSimilarity();
+        if (explanationMap.containsKey(key)) {
+            return explanationMap.get(key).getSimilarity();
         }
 
         switch (this.fileType) {
             case KRSS_FILE -> {
                 KRSSSimilarityController krssSimilarityController = new KRSSSimilarityController(validationService, similarityService);
-
-                result = krssSimilarityController.measureSimilarity(concept1, concept2, optionVal, this.fileType);
+                result = krssSimilarityController.measureSimilarity(concept1, concept2, optionVal, this.fileType, strategy);
                 List<BacktraceTable> backtraceTables = krssSimilarityController.getBacktraceTables();
-
-                addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1));
+                addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
             }
             case OWL_FILE -> {
                 OWLSimilarityController owlSimilarityController = new OWLSimilarityController(validationService, similarityService);
-
-                result = owlSimilarityController.measureSimilarity(concept1, concept2, optionVal, this.fileType);
+                result = owlSimilarityController.measureSimilarity(concept1, concept2, optionVal, this.fileType, strategy);
                 List<BacktraceTable> backtraceTables = owlSimilarityController.getBacktraceTables();
-
-                addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1));
+                addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
             }
             default -> throw new JSimPiException("File type not supported.", ErrorCode.Application_InvalidFileType);
         }
@@ -363,15 +380,14 @@ public class SimExplainer {
      * @param similarity the similarity score between the two concepts
      * @param backtraceTable_forward the forward backtrace table
      * @param backtraceTable_backward the backward backtrace table
+     * @param optionVal the implementation method used for similarity calculation
+     * @param strategy the combination strategy used for similarity calculationfor (Map.Entry<ExplanationKey
      */
-    private void addExplanationMap(String concept1, String concept2, BigDecimal similarity, BacktraceTable backtraceTable_forward, BacktraceTable backtraceTable_backward) {
-        ExplanationService explanationService;
-
-        explanationService = new ExplanationService(similarity, backtraceTable_forward, backtraceTable_backward);
-
-        SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
-
-        explanationMap.put(pair, explanationService);
+    private void addExplanationMap(String concept1, String concept2, BigDecimal similarity,
+                                    BacktraceTable forward, BacktraceTable backward,
+                                    ImplementationMethod method, CombinationStrategy strategy) {
+        ExplanationKey key = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
+        explanationMap.put(key, new ExplanationService(similarity, forward, backward, explanationConverterService));
     }
 
     /**
@@ -389,7 +405,7 @@ public class SimExplainer {
         StringBuilder builder = new StringBuilder();
 
         for (String concept : concepts) {
-            for (Map.Entry<SymmetricPair<String>, ExplanationService> entry : explanationMap.entrySet()) {
+            for (Map.Entry<ExplanationKey, ExplanationService> entry : explanationMap.entrySet()) {
                 ExplanationService explanationService = entry.getValue();
 
                 try {
@@ -416,9 +432,7 @@ public class SimExplainer {
             throw new JSimPiException("Concept not provided", ErrorCode.Application_IllegalArguments);
         }
 
-        JSONObject resultJson = new JSONObject();
-
-        for (Map.Entry<SymmetricPair<String>, ExplanationService> entry : explanationMap.entrySet()) {
+        for (Map.Entry<ExplanationKey, ExplanationService> entry : explanationMap.entrySet()) {
             ExplanationService explanationService = entry.getValue();
 
             try {
@@ -460,35 +474,40 @@ public class SimExplainer {
      * @throws JSimPiException if any of the concepts are null or if the similarity between the concepts
      *                          has not been calculated yet
      */
-    public Explanation getExplanation(String concept1, String concept2) {
-        if (concept1 == null || concept2 == null) {
-            throw new JSimPiException("Concept not provided", ErrorCode.Application_IllegalArguments);
-        }
+    public Explanation getExplanation(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
+
+        Map.Entry<ExplanationKey, ExplanationService> entry = explanationMap.entrySet().stream()
+                .filter(e -> e.getKey().equals(lookupKey))
+                .findFirst()
+                .orElseThrow(() -> new JSimPiException("No explanation found for [" + concept1 + "] and [" + concept2
+                        + "] with method [" + method + "] and strategy [" + strategy + "]. Call similarity() first.",
+                        ErrorCode.Application_IllegalArguments));
+
+        ExplanationKey storedKey = entry.getKey();
+        ExplanationService explanationService = entry.getValue();
 
         SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
-
-        if (!explanationMap.containsKey(pair)) {
-            throw new JSimPiException("Similarity between [" + concept1 + "] and [" + concept2 + "] has not been calculated yet.", ErrorCode.Application_IllegalArguments);
-        }
-
-        ExplanationService explanationService = null;
-        for (SymmetricPair<String> key : explanationMap.keySet()) {
-            if (key.equals(pair)) {
-                if (key.equalsOrder(pair)) {
-                    explanationService = explanationMap.get(pair);
-                } else {
-                    ExplanationService tmp = explanationMap.get(pair);
-                    explanationService = new ExplanationService(tmp.getSimilarity(), tmp.getBackwardBacktraceTable(), tmp.getForwardBacktraceTable());
-                }
-            }
-        }
-
         Explanation explanation = new Explanation();
         explanation.similarity = explanationService.getSimilarity();
-        explanation.forward = explanationService.explanationTree(ReasoningDirectionConstant.FORWARD);
-        explanation.backward = explanationService.explanationTree(ReasoningDirectionConstant.BACKWARD);
+
+        if (storedKey.pair().equalsOrder(pair)) {
+            explanation.forward = explanationService.explanationTree(ReasoningDirectionConstant.FORWARD);
+            explanation.backward = explanationService.explanationTree(ReasoningDirectionConstant.BACKWARD);
+        } else {
+            explanation.forward = explanationService.explanationTree(ReasoningDirectionConstant.BACKWARD);
+            explanation.backward = explanationService.explanationTree(ReasoningDirectionConstant.FORWARD);
+        }
 
         return explanation;
+    }
+
+    // old overload for backward compatibility defaulting to AVERAGE:
+    public Explanation getExplanation(String concept1, String concept2) {
+        throw new JSimPiException(
+            "Please use getExplanation(concept1, concept2, method, strategy) since multiple methods " +
+            "may have been called for this concept pair.",
+            ErrorCode.Application_IllegalArguments);
     }
 
     public class Explanation {
@@ -507,34 +526,29 @@ public class SimExplainer {
      * @throws JSimPiException if any of the concepts are null or if the similarity between the concepts
      *                          has not been calculated yet
      */
-    public JSONObject getExplanationAsJson(String concept1, String concept2) {
-        if (concept1 == null || concept2 == null) {
-            throw new JSimPiException("Concept not provided", ErrorCode.Application_IllegalArguments);
-        }
+    public JSONObject getExplanationAsJson(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
 
-        SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
+        Map.Entry<ExplanationKey, ExplanationService> entry = explanationMap.entrySet().stream()
+                .filter(e -> e.getKey().equals(lookupKey))
+                .findFirst()
+                .orElseThrow(() -> new JSimPiException("No explanation found for [" + concept1 + "] and [" + concept2
+                        + "]. Call similarity() first.",
+                        ErrorCode.Application_IllegalArguments));
 
-        if (!explanationMap.containsKey(pair)) {
-            throw new JSimPiException("Similarity between [" + concept1 + "] and [" + concept2 + "] has not been calculated yet.", ErrorCode.Application_IllegalArguments);
-        }
-
-        ExplanationService explanationService = null;
-        for (SymmetricPair<String> key : explanationMap.keySet()) {
-            if (key.equals(pair)) {
-                if (key.equalsOrder(pair)) {
-                    explanationService = explanationMap.get(pair);
-                } else {
-                    ExplanationService tmp = explanationMap.get(pair);
-                    explanationService = new ExplanationService(tmp.getSimilarity(), tmp.getBackwardBacktraceTable(), tmp.getForwardBacktraceTable());
-                }
-            }
-        }
+        ExplanationKey storedKey = entry.getKey();
+        ExplanationService explanationService = entry.getValue();
 
         JSONObject explanation = new JSONObject();
         explanation.put("similarity", explanationService.getSimilarity());
-        explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
-        explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
-
+        SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
+        if (storedKey.pair().equalsOrder(pair)) {
+            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
+            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
+        } else {
+            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
+            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
+        }
         return explanation;
     }
 
@@ -546,16 +560,13 @@ public class SimExplainer {
      * @param outputPath the path to the output file
      * @return the explanation of the similarity as a JSON object
      */
-    public JSONObject getExplanationAsJson(String concept1, String concept2, String outputPath) {
-        JSONObject explanation = getExplanationAsJson(concept1, concept2);
-
+    public JSONObject getExplanationAsJson(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy, String outputPath) {
+        JSONObject explanation = getExplanationAsJson(concept1, concept2, method, strategy);
         try (FileWriter file = new FileWriter(outputPath)) {
-            file.write(explanation.toString(4)); // Write JSON with indentation
+            file.write(explanation.toString(4));
         } catch (IOException e) {
             e.printStackTrace();
-            // Handle the exception as needed
         }
-
         return explanation;
     }
 
@@ -584,10 +595,29 @@ public class SimExplainer {
      * @param concept2 the second concept
      * @return the explanation as natural language in JSON format
      */
-    public JSONObject getExplantionAsNaturalLanguage(String concept1, String concept2) {
-        JSONObject explanation = getExplanationAsJson(concept1, concept2);
+    public JSONObject getExplanationAsNaturalLanguage(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
 
-        return ExplanationConverterService.convertExplanationBiDirectionTree(explanation);
+        Map.Entry<ExplanationKey, ExplanationService> entry = explanationMap.entrySet().stream()
+                .filter(e -> e.getKey().equals(lookupKey))
+                .findFirst()
+                .orElseThrow(() -> new JSimPiException("No explanation found. Call similarity() first.",
+                        ErrorCode.Application_IllegalArguments));
+
+        ExplanationKey storedKey = entry.getKey();
+        ExplanationService explanationService = entry.getValue();
+
+        JSONObject explanation = new JSONObject();
+        explanation.put("similarity", explanationService.getSimilarity());
+        SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
+        if (storedKey.pair().equalsOrder(pair)) {
+            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
+            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
+        } else {
+            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
+            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
+        }
+        return explanationConverterService.convertExplanationBiDirectionTree(explanation);
     }
 
     /**
@@ -598,16 +628,13 @@ public class SimExplainer {
      * @param outputPath the path to the output file
      * @return the explanation as natural language in JSON format
      */
-    public JSONObject getExplantionAsNaturalLanguage(String concept1, String concept2, String outputPath) {
-        JSONObject explanation = getExplantionAsNaturalLanguage(concept1, concept2);
-
+   public JSONObject getExplanationAsNaturalLanguage(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy, String outputPath) {
+        JSONObject explanation = getExplanationAsNaturalLanguage(concept1, concept2, method, strategy);
         try (FileWriter file = new FileWriter(outputPath)) {
-            file.write(explanation.toString(4)); // Write JSON with indentation
+            file.write(explanation.toString(4));
         } catch (IOException e) {
             e.printStackTrace();
-            // Handle the exception as needed
         }
-
         return explanation;
     }
 
