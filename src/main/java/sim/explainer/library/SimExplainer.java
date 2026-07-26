@@ -31,6 +31,7 @@ import sim.explainer.library.framework.KRSSServiceContext;
 import sim.explainer.library.framework.OWLServiceContext;
 import sim.explainer.library.framework.PreferenceProfile;
 import sim.explainer.library.framework.explainer.BacktraceTable;
+import sim.explainer.library.framework.explainer.FL0BacktraceTable;
 import sim.explainer.library.service.ExplanationConverterService;
 import sim.explainer.library.service.ExplanationService;
 import sim.explainer.library.service.SimilarityService;
@@ -53,6 +54,8 @@ public class SimExplainer {
     private final ExplanationConverterService explanationConverterService = new ExplanationConverterService();
     private record ExplanationKey(SymmetricPair<String> pair, ImplementationMethod method, CombinationStrategy strategy) {}
     private final HashMap<ExplanationKey, ExplanationService> explanationMap = new HashMap<>();
+    private final HashMap<ExplanationKey, FL0BacktraceTable> fl0ExplanationMap = new HashMap<>();
+    private final HashMap<ExplanationKey, BigDecimal> fl0SimilarityCache = new HashMap<>();
 
     /**
      * Constructs a {@code SimExplainer} object and initializes it by loading ontologies and preference
@@ -322,6 +325,8 @@ public class SimExplainer {
     public void resetPreferenceProfile() {
         preferenceProfile.reset();
         explanationMap.clear();
+        fl0ExplanationMap.clear();
+        fl0SimilarityCache.clear();
     }
 
     /**
@@ -352,19 +357,45 @@ public class SimExplainer {
         if (explanationMap.containsKey(key)) {
             return explanationMap.get(key).getSimilarity();
         }
+        if (fl0SimilarityCache.containsKey(key)) {
+            return fl0SimilarityCache.get(key);
+        }
 
         switch (this.fileType) {
             case KRSS_FILE -> {
                 KRSSSimilarityController krssSimilarityController = new KRSSSimilarityController(validationService, similarityService);
                 result = krssSimilarityController.measureSimilarity(concept1, concept2, optionVal, this.fileType, strategy);
-                List<BacktraceTable> backtraceTables = krssSimilarityController.getBacktraceTables();
-                addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
+
+                boolean isFL0 = optionVal == ImplementationMethod.TOPDOWN_FL0_SIM
+                            || optionVal == ImplementationMethod.TOPDOWN_FL0_SIMPI
+                            || optionVal == ImplementationMethod.DYNAMIC_FL0_SIM
+                            || optionVal == ImplementationMethod.DYNAMIC_FL0_SIMPI;
+
+                if (isFL0) {
+                    FL0BacktraceTable fl0Table = similarityService.getLastFlatExplanationTable();
+                    fl0ExplanationMap.put(key, fl0Table);
+                    fl0SimilarityCache.put(key, result);
+                } else {
+                    List<BacktraceTable> backtraceTables = krssSimilarityController.getBacktraceTables();
+                    addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
+                }
             }
             case OWL_FILE -> {
                 OWLSimilarityController owlSimilarityController = new OWLSimilarityController(validationService, similarityService);
                 result = owlSimilarityController.measureSimilarity(concept1, concept2, optionVal, this.fileType, strategy);
-                List<BacktraceTable> backtraceTables = owlSimilarityController.getBacktraceTables();
-                addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
+
+                boolean isFL0 = optionVal == ImplementationMethod.TOPDOWN_FL0_SIM
+                            || optionVal == ImplementationMethod.TOPDOWN_FL0_SIMPI
+                            || optionVal == ImplementationMethod.DYNAMIC_FL0_SIM
+                            || optionVal == ImplementationMethod.DYNAMIC_FL0_SIMPI;
+
+                if (isFL0) {
+                    FL0BacktraceTable fl0Table = similarityService.getLastFlatExplanationTable();
+                    fl0ExplanationMap.put(key, fl0Table);
+                } else {
+                    List<BacktraceTable> backtraceTables = owlSimilarityController.getBacktraceTables();
+                    addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
+                }
             }
             default -> throw new JSimPiException("File type not supported.", ErrorCode.Application_InvalidFileType);
         }
@@ -480,9 +511,7 @@ public class SimExplainer {
         Map.Entry<ExplanationKey, ExplanationService> entry = explanationMap.entrySet().stream()
                 .filter(e -> e.getKey().equals(lookupKey))
                 .findFirst()
-                .orElseThrow(() -> new JSimPiException("No explanation found for [" + concept1 + "] and [" + concept2
-                        + "] with method [" + method + "] and strategy [" + strategy + "]. Call similarity() first.",
-                        ErrorCode.Application_IllegalArguments));
+                .orElseThrow(() -> new JSimPiException("No explanation found...", ErrorCode.Application_IllegalArguments));
 
         ExplanationKey storedKey = entry.getKey();
         ExplanationService explanationService = entry.getValue();
@@ -508,6 +537,18 @@ public class SimExplainer {
             "Please use getExplanation(concept1, concept2, method, strategy) since multiple methods " +
             "may have been called for this concept pair.",
             ErrorCode.Application_IllegalArguments);
+    }
+
+    public FL0BacktraceTable getFL0Explanation(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
+
+        return fl0ExplanationMap.entrySet().stream()
+                .filter(e -> e.getKey().equals(lookupKey))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElseThrow(() -> new JSimPiException(
+                        "No FL0 explanation found for [" + concept1 + "] and [" + concept2 + "]. Call similarity() first.",
+                        ErrorCode.Application_IllegalArguments));
     }
 
     public class Explanation {
@@ -628,7 +669,7 @@ public class SimExplainer {
      * @param outputPath the path to the output file
      * @return the explanation as natural language in JSON format
      */
-   public JSONObject getExplanationAsNaturalLanguage(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy, String outputPath) {
+    public JSONObject getExplanationAsNaturalLanguage(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy, String outputPath) {
         JSONObject explanation = getExplanationAsNaturalLanguage(concept1, concept2, method, strategy);
         try (FileWriter file = new FileWriter(outputPath)) {
             file.write(explanation.toString(4));
@@ -637,6 +678,7 @@ public class SimExplainer {
         }
         return explanation;
     }
+    
 
     /**
      * Retrieves a list of concept names from the ontology.

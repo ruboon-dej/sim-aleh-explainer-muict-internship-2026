@@ -15,12 +15,13 @@
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/util/syntaxanalyzer/manchester/ManchesterConceptSetHandler.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/reasoner/TopDownFL0SimReasonerImpl.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/unfolding/SubRoleUnfolderManchesterSyntax.java
+/Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/explainer/FL0Record.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/util/syntaxanalyzer/Handler.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/reasoner/DynamicALEHSimReasonerImpl.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/reasoner/TopDownALEHSimPiReasonerImpl.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/controller/KRSSSimilarityController.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/descriptiontree/DepthFirstTreeIterator.java
-/Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/reasoner/DynamicFL0SimPiReasonerImpl.java
+/Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/explainer/FL0BacktraceTable.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/KRSSServiceContext.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/service/ValidationService.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/unfolding/ConceptDefinitionUnfolderKRSSSyntax.java
@@ -31,7 +32,6 @@
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/enumeration/OWLDocumentFormat.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/reasoner/DynamicProgrammingSimReasonerImpl.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/descriptiontree/TreeNode.java
-/Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/reasoner/DynamicFL0SimReasonerImpl.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/OWLServiceContext.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/unfolding/SuperRoleUnfolderKRSSSyntax.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/explainer/SimRecord.java
@@ -46,6 +46,7 @@
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/enumeration/KRSSConstant.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/enumeration/ReasonerParameters.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/util/utilstructure/SymmetricPair.java
+/Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/reasoner/IFlatExplainableReasoner.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/enumeration/TraversalStrategy.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/service/SimilarityService.java
 /Users/ruboondej-udom/Downloads/Intern FL0/Library/sim-aleh-explainer-muict-internship-2026/src/main/java/sim/explainer/library/framework/unfolding/SubRoleUnfolderKRSSSyntax.java

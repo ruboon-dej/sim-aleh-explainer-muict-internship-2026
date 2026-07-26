@@ -24,10 +24,12 @@ import sim.explainer.library.framework.PreferenceProfile;
 import sim.explainer.library.framework.descriptiontree.Tree;
 import sim.explainer.library.framework.descriptiontree.TreeBuilder;
 import sim.explainer.library.framework.explainer.BacktraceTable;
+import sim.explainer.library.framework.explainer.FL0BacktraceTable;
 import sim.explainer.library.framework.reasoner.DynamicALEHSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicALEHSimReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicProgrammingSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.DynamicProgrammingSimReasonerImpl;
+import sim.explainer.library.framework.reasoner.IFlatExplainableReasoner;
 import sim.explainer.library.framework.reasoner.IReasoner;
 import sim.explainer.library.framework.reasoner.TopDownALEHSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.TopDownALEHSimReasonerImpl;
@@ -76,6 +78,7 @@ public class SimilarityService {
 
     private BacktraceTable backtraceTable_forward = new BacktraceTable();
     private BacktraceTable backtraceTable_backward = new BacktraceTable();
+    private FL0BacktraceTable lastFlatExplanationTable;
 
     public SimilarityService(OWLServiceContext owlServiceContext, KRSSServiceContext krssServiceContext, PreferenceProfile preferenceProfile) {
         this.owlServiceContext = owlServiceContext;
@@ -119,10 +122,17 @@ public class SimilarityService {
     private BigDecimal computeSimilarity(IReasoner iReasoner, IRoleUnfolder iRoleUnfolder, Tree<Set<String>> tree1, Tree<Set<String>> tree2, CombinationStrategy strategy) {
         iReasoner.setRoleUnfoldingStrategy(iRoleUnfolder);
 
+        if (iReasoner instanceof TopDownFL0SimReasonerImpl fl0) fl0.resetFl0BacktraceTable();
+        if (iReasoner instanceof TopDownFL0SimPiReasonerImpl fl0Pi) fl0Pi.resetFl0BacktraceTable();
+
         BigDecimal forwardDistance = iReasoner.measureDirectedSimilarity(tree1, tree2);
         this.backtraceTable_forward = iReasoner.getBacktraceTable();
         BigDecimal backwardDistance = iReasoner.measureDirectedSimilarity(tree2, tree1);
         this.backtraceTable_backward = iReasoner.getBacktraceTable();
+        
+        if (iReasoner instanceof IFlatExplainableReasoner<?> flat) {
+            this.lastFlatExplanationTable = (FL0BacktraceTable) flat.getExplanationTable();
+        }
 
         switch (strategy) {
             case MULTIPLICATION:
@@ -246,4 +256,6 @@ public class SimilarityService {
         }
         return names;
     }
+
+    public FL0BacktraceTable getLastFlatExplanationTable() { return lastFlatExplanationTable; }
 }

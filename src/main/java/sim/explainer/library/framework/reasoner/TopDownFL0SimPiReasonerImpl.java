@@ -14,12 +14,15 @@ import sim.explainer.library.framework.PreferenceProfile;
 import sim.explainer.library.framework.descriptiontree.Tree;
 import sim.explainer.library.framework.descriptiontree.TreeNode;
 import sim.explainer.library.framework.explainer.BacktraceTable;
+import sim.explainer.library.framework.explainer.FL0BacktraceTable;
+import sim.explainer.library.framework.explainer.FL0Record;
 import sim.explainer.library.framework.explainer.SimRecord;
 import sim.explainer.library.framework.unfolding.IRoleUnfolder;
 
-public class TopDownFL0SimPiReasonerImpl implements IReasoner {
+public class TopDownFL0SimPiReasonerImpl implements IReasoner, IFlatExplainableReasoner<FL0BacktraceTable> {
 
     protected PreferenceProfile preferenceProfile;
+    protected FL0BacktraceTable fl0BacktraceTable = new FL0BacktraceTable();
     protected BacktraceTable backtraceTable = new BacktraceTable();
     protected Set<String> primitiveConceptUniverse = null;
 
@@ -59,9 +62,10 @@ public class TopDownFL0SimPiReasonerImpl implements IReasoner {
     }
 
     protected BigDecimal measureDirectedSimilarityPi(SimRecord record,
-                                                      Map<String, Set<List<String>>> wC,
-                                                      Map<String, Set<List<String>>> wD,
-                                                      Set<String> allPrimitives) {
+                                                  Map<String, Set<List<String>>> wC,
+                                                  Map<String, Set<List<String>>> wD,
+                                                  Set<String> allPrimitives,
+                                                  boolean isForward) {
 
         BigDecimal numerator = BigDecimal.ZERO;
         BigDecimal denominator = BigDecimal.ZERO;
@@ -90,6 +94,13 @@ public class TopDownFL0SimPiReasonerImpl implements IReasoner {
             }
 
             numerator = numerator.add(iP.multiply(max));
+
+            FL0Record fl0Record = new FL0Record(P, bestQ, max, bestQ != null);
+            if (isForward) {
+                fl0BacktraceTable.addForwardRecord(P, fl0Record);
+            } else {
+                fl0BacktraceTable.addBackwardRecord(P, fl0Record);
+            }
         }
 
         if (denominator.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ONE;
@@ -99,6 +110,12 @@ public class TopDownFL0SimPiReasonerImpl implements IReasoner {
     @Override
     public BigDecimal measureDirectedSimilarity(Tree<Set<String>> tree1, Tree<Set<String>> tree2) {
         this.backtraceTable = new BacktraceTable();
+
+        if (fl0BacktraceTable == null) {
+            fl0BacktraceTable = new FL0BacktraceTable();  // first call this comparison → forward
+        }
+        boolean isForward = fl0BacktraceTable.getForwardRecords().isEmpty()
+                        && fl0BacktraceTable.getBackwardRecords().isEmpty();
 
         TreeNode<Set<String>> rootC = tree1.getNodes().get(0);
         TreeNode<Set<String>> rootD = tree2.getNodes().get(0);
@@ -114,11 +131,28 @@ public class TopDownFL0SimPiReasonerImpl implements IReasoner {
         allPrimitives.addAll(wD.keySet());
 
         SimRecord record = new SimRecord();
-        BigDecimal result = measureDirectedSimilarityPi(record, wC, wD, allPrimitives);
+        BigDecimal result = measureDirectedSimilarityPi(record, wC, wD, allPrimitives, isForward);
         record.setDeg(result);
         backtraceTable.addRecord(0, rootC, rootD, record);
 
+        fl0BacktraceTable.setForwardConcepts(rootC.getConceptName(), rootD.getConceptName());
+        fl0BacktraceTable.setForwardDeg(result);
+
+        if (isForward) {
+            fl0BacktraceTable.setForwardConcepts(rootC.getConceptName(), rootD.getConceptName());
+            fl0BacktraceTable.setForwardDeg(result);
+        } else {
+            fl0BacktraceTable.setBackwardConcepts(rootC.getConceptName(), rootD.getConceptName());
+            fl0BacktraceTable.setBackwardDeg(result);
+        }
+
+
         return result;
+    }
+
+    @Override
+    public FL0BacktraceTable getExplanationTable() {
+        return fl0BacktraceTable;
     }
 
     @Override
@@ -126,6 +160,14 @@ public class TopDownFL0SimPiReasonerImpl implements IReasoner {
 
     public void setPrimitiveConceptUniverse(Set<String> universe) {
         this.primitiveConceptUniverse = universe;
+    }
+
+    public void resetFl0BacktraceTable() {
+        this.fl0BacktraceTable = new FL0BacktraceTable();
+    }
+
+    public FL0BacktraceTable getFl0BacktraceTable() {
+        return fl0BacktraceTable;
     }
 
     @Override

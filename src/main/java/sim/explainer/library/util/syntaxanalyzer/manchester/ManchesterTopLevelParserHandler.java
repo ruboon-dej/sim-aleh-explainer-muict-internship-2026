@@ -111,10 +111,43 @@ public class ManchesterTopLevelParserHandler extends ParserHandler {
                 String patternStr = PATTERN_NAME_ONLY + groupStr;
                 Pattern pattern = Pattern.compile(patternStr);
                 Matcher matcher = pattern.matcher(compactFormat);
+
+                // If compactFormat is already in a form of "role only (concept)"
                 if (matcher.find()) {
                     String role = storeRoleAndNestedUniversalConceptPair(context, matcher.group());
                     String roleForm = ParserUtils.convertToRoleForm(role);
+
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("2b. compactFormat is already in a form of \"role only (concept)\".");
+                    }
+
                     return compactFormat.replaceFirst(patternStr, roleForm);
+                }
+
+                else {
+                    String str = MyStringUtils.removeCharactersFrom(group, 0, group.length() - 2);
+
+                    pattern = Pattern.compile(PATTERN_NAME_ONLY_NAME);
+                    matcher = pattern.matcher(str);
+
+                    if (matcher.find()) {
+                        String role = storeRoleAndNestedUniversalConceptPair(context, str);
+                        String roleForm = ParserUtils.convertToRoleForm(role);
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("2c. compactFormat is already in a form of \"(role only concept)\".");
+                        }
+
+                        return compactFormat.replaceFirst(groupStr, roleForm);
+                    }
+
+                    else {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("2d. compactFormat contains nested parenthesises inside \"only\".");
+                        }
+
+                        return MyStringUtils.removeCharactersFrom(compactFormat, beginParenthesis, lastParenthesis - 1);
+                    }
                 }
             } 
 

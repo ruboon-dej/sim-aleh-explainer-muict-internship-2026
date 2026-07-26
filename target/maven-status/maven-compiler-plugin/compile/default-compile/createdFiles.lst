@@ -1,7 +1,9 @@
 sim/explainer/library/framework/reasoner/IReasoner.class
+sim/explainer/library/framework/reasoner/IFlatExplainableReasoner.class
 sim/explainer/library/service/ExplanationService.class
 sim/explainer/library/framework/reasoner/TopDownSimPiReasonerImpl.class
 sim/explainer/library/enumeration/OWLConstant.class
+sim/explainer/library/framework/explainer/FL0BacktraceTable.class
 sim/explainer/library/util/syntaxanalyzer/Handler.class
 sim/explainer/library/service/SimilarityService.class
 sim/explainer/library/util/utilstructure/SymmetricPair.class
@@ -41,6 +43,7 @@ sim/explainer/library/util/TimeUtils.class
 sim/explainer/library/framework/unfolding/IConceptUnfolder.class
 sim/explainer/library/util/ParserUtils.class
 sim/explainer/library/enumeration/FileTypeConstant.class
+sim/explainer/library/framework/explainer/FL0Record.class
 sim/explainer/library/SimExplainer.class
 sim/explainer/library/framework/unfolding/ConceptDefinitionUnfolderKRSSSyntax.class
 sim/explainer/library/controller/KRSSSimilarityController.class
@@ -53,12 +56,10 @@ sim/explainer/library/util/syntaxanalyzer/ParserHandler.class
 sim/explainer/library/framework/PreferenceProfile.class
 sim/explainer/library/util/syntaxanalyzer/krss/KRSSConceptSetHandler.class
 sim/explainer/library/framework/descriptiontree/TreeNode.class
-sim/explainer/library/framework/reasoner/DynamicFL0SimPiReasonerImpl.class
 sim/explainer/library/enumeration/KRSSConstant.class
 sim/explainer/library/enumeration/ImplementationMethod.class
 sim/explainer/library/SimExplainer$1.class
 sim/explainer/library/framework/reasoner/DynamicALEHSimPiReasonerImpl.class
-sim/explainer/library/framework/reasoner/DynamicFL0SimReasonerImpl.class
 sim/explainer/library/util/syntaxanalyzer/krss/KRSSTopLevelParserHandler.class
 sim/explainer/library/util/syntaxanalyzer/IChainOfResponsibilityContext.class
 sim/explainer/library/service/ValidationService.class
