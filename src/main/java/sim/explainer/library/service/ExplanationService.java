@@ -17,6 +17,7 @@ import sim.explainer.library.exception.JSimPiException;
 import sim.explainer.library.framework.descriptiontree.TreeNode;
 import sim.explainer.library.framework.explainer.BacktraceTable;
 import sim.explainer.library.framework.explainer.SimRecord;
+import sim.explainer.library.util.MyStringUtils;
 import sim.explainer.library.util.utilstructure.SymmetricPair;
 
 /**
@@ -51,122 +52,145 @@ public class ExplanationService {
      * @return the ASCII representation of the tree hierarchy
      * @throws JSimPiException if the tree for the concept is not found
      */
-    public String treeHierarchy(String concept) {
+    public String treeHierarchy(String concept, boolean includeFreshConceptName) {
         TreeNode<Set<String>> root = findRootNode(concept);
-
-        if (root == null) {
-            throw new JSimPiException("Tree not found", ErrorCode.Application_IllegalArguments);
-        }
-
+        if (root == null) throw new JSimPiException("Tree not found", ErrorCode.Application_IllegalArguments);
         StringBuilder result = new StringBuilder();
-        buildTreeAscii(root, result, "", true);
-
+        buildTreeAscii(root, result, "", true, includeFreshConceptName);
         return result.toString();
     }
+    public String treeHierarchy(String concept) { return treeHierarchy(concept, true); }
 
-    private void buildTreeAscii(TreeNode<Set<String>> node, StringBuilder result, String prefix, boolean isTail) {
+    private void buildTreeAscii(TreeNode<Set<String>> node, StringBuilder result, String prefix, boolean isTail, boolean includeFreshConceptName) {
+        String label = node.getEdgeToParent() == null ? node.getConceptName() : node.getEdgeToParent();
+        if (!includeFreshConceptName) label = MyStringUtils.stripFresh(label);
         result.append(prefix).append(isTail ? "└── " : "├── ")
-                .append(node.getEdgeToParent() == null ? node.getConceptName() : node.getEdgeToParent())
-                .append(" : ")
-                .append(node.getData())
-                .append("\n");
+                .append(label).append(" : ").append(node.getData()).append("\n");
         for (int i = 0; i < node.getChildren().size() - 1; i++) {
-            buildTreeAscii(node.getChildren().get(i), result, prefix + (isTail ? "    " : "│   "), false);
+            buildTreeAscii(node.getChildren().get(i), result, prefix + (isTail ? "    " : "│   "), false, includeFreshConceptName);
         }
         if (node.getChildren().size() > 0) {
-            buildTreeAscii(node.getChildren().get(node.getChildren().size() - 1), result, prefix + (isTail ? "    " : "│   "), true);
+            buildTreeAscii(node.getChildren().get(node.getChildren().size() - 1), result, prefix + (isTail ? "    " : "│   "), true, includeFreshConceptName);
         }
     }
 
-    /**
-     * Generates a JSON representation of the tree hierarchy for the given concept.
-     *
-     * @param concept the concept to generate the tree hierarchy for
-     * @return the JSON representation of the tree hierarchy
-     * @throws JSimPiException if the tree for the concept is not found
-     */
-    public JSONObject treeHierarchyAsJson(String concept) {
+    public JSONObject treeHierarchyAsJson(String concept, boolean includeFreshConceptName) {
         TreeNode<Set<String>> root = findRootNode(concept);
-
-        if (root == null) {
-            throw new JSimPiException("Tree not found", ErrorCode.Application_IllegalArguments);
-        }
-
+        if (root == null) throw new JSimPiException("Tree not found", ErrorCode.Application_IllegalArguments);
         root = root.copy();
         root.setEdgeToParent(null);
-
-        return buildTreeHierarchyAsJson(root);
+        return buildTreeHierarchyAsJson(root, includeFreshConceptName);
     }
+    public JSONObject treeHierarchyAsJson(String concept) { return treeHierarchyAsJson(concept, true); }
 
-    private JSONObject buildTreeHierarchyAsJson(TreeNode<Set<String>> node) {
+    private JSONObject buildTreeHierarchyAsJson(TreeNode<Set<String>> node, boolean includeFreshConceptName) {
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("roleName", node.getEdgeToParent() == null ? null : node.getEdgeToParent());
-        jsonObject.put("conceptName", node.getConceptName());
+        String role = node.getEdgeToParent();
+        String cname = node.getConceptName();
+        if (!includeFreshConceptName) { role = MyStringUtils.stripFresh(role); cname = MyStringUtils.stripFresh(cname); }
+        jsonObject.put("roleName", role);
+        jsonObject.put("conceptName", cname);
 
-        JSONArray primitiveConcepts = new JSONArray(node.getData());
-        jsonObject.put("primitiveConcepts", primitiveConcepts);
+        Set<String> data = node.getData();
+        if (!includeFreshConceptName) {
+            Set<String> stripped = new java.util.LinkedHashSet<>();
+            for (String s : data) stripped.add(MyStringUtils.stripFresh(s));
+            data = stripped;
+        }
+        jsonObject.put("primitiveConcepts", new JSONArray(data));
 
         JSONArray existentials = new JSONArray();
         for (TreeNode<Set<String>> child : node.getChildren()) {
-            existentials.put(buildTreeHierarchyAsJson(child));
+            existentials.put(buildTreeHierarchyAsJson(child, includeFreshConceptName));
         }
         jsonObject.put("existentials", existentials);
-
         return jsonObject;
     }
 
-    /**
-     * Generates an ASCII representation of the explanation tree for the given reasoning direction.
-     *
-     * @param direction the reasoning direction (FORWARD or BACKWARD)
-     * @return the ASCII representation of the explanation tree
-     */
-    public String explanationTree(ReasoningDirectionConstant direction) {
+    public String explanationTree(ReasoningDirectionConstant direction, boolean includeFreshConceptName) {
         BacktraceTable backtraceTable = getBacktraceTable(direction);
         StringBuilder result = new StringBuilder();
-
         HashMap<SymmetricPair<TreeNode<Set<String>>>, SimRecord> levelMap = backtraceTable.getTable().get(0);
-        if (levelMap == null) {
-            return "No data available at level 0.";
-        }
-
+        if (levelMap == null) return "No data available at level 0.";
         for (SymmetricPair<TreeNode<Set<String>>> rootPair : levelMap.keySet()) {
-            buildExplanationTreeAscii(backtraceTable, rootPair.getFirst(), result, "", true, 0);
+            buildExplanationTreeAscii(backtraceTable, rootPair.getFirst(), result, "", true, 0, includeFreshConceptName);
         }
-
         return result.toString();
     }
+    public String explanationTree(ReasoningDirectionConstant direction) { return explanationTree(direction, true); }
 
-    private void buildExplanationTreeAscii(BacktraceTable backtraceTable, TreeNode<Set<String>> node, StringBuilder result, String prefix, boolean isTail, int level) {
-        if (!backtraceTable.getTable().containsKey(level)) {
-            return;
-        }
-
+    private void buildExplanationTreeAscii(BacktraceTable backtraceTable, TreeNode<Set<String>> node, StringBuilder result, String prefix, boolean isTail, int level, boolean includeFreshConceptName) {
+        if (!backtraceTable.getTable().containsKey(level)) return;
         SymmetricPair<TreeNode<Set<String>>> pair = backtraceTable.getTable().get(level).keySet().stream()
                 .filter(p -> p.getFirst().equals(node) || p.getSecond().equals(node))
                 .findFirst().orElse(null);
-
-        if (pair == null) {
-            return;
-        }
+        if (pair == null) return;
 
         TreeNode<Set<String>> comparingNode = pair.getFirst().equals(node) ? pair.getSecond() : pair.getFirst();
         SimRecord simRecord = backtraceTable.getTable().get(level).get(pair);
 
+        String n1 = includeFreshConceptName ? node.getConceptName() : MyStringUtils.stripFresh(node.getConceptName());
+        String n2 = includeFreshConceptName ? comparingNode.getConceptName() : MyStringUtils.stripFresh(comparingNode.getConceptName());
+
         result.append(prefix).append(isTail ? "└── " : "├── ")
-                .append("[")
-                .append(node.getConceptName())
-                .append("] : [")
-                .append(comparingNode.getConceptName())
-                .append("] - ")
-                .append(simRecord)
-                .append("\n");
+                .append("[").append(n1).append("] : [").append(n2).append("] - ").append(simRecord).append("\n");
         for (int i = 0; i < node.getChildren().size() - 1; i++) {
-            buildExplanationTreeAscii(backtraceTable, node.getChildren().get(i), result, prefix + (isTail ? "    " : "│   "), false, level + 1);
+            buildExplanationTreeAscii(backtraceTable, node.getChildren().get(i), result, prefix + (isTail ? "    " : "│   "), false, level + 1, includeFreshConceptName);
         }
         if (node.getChildren().size() > 0) {
-            buildExplanationTreeAscii(backtraceTable, node.getChildren().get(node.getChildren().size() - 1), result, prefix + (isTail ? "    " : "│   "), true, level + 1);
+            buildExplanationTreeAscii(backtraceTable, node.getChildren().get(node.getChildren().size() - 1), result, prefix + (isTail ? "    " : "│   "), true, level + 1, includeFreshConceptName);
         }
+    }
+
+    public JSONObject explanationTreeAsJson(ReasoningDirectionConstant direction, boolean includeFreshConceptName) {
+        BacktraceTable backtraceTable = getBacktraceTable(direction);
+        HashMap<SymmetricPair<TreeNode<Set<String>>>, SimRecord> levelMap = backtraceTable.getTable().get(0);
+        if (levelMap == null || levelMap.isEmpty()) return new JSONObject().put("error", "No data available at level 0.");
+        TreeNode<Set<String>> root = levelMap.keySet().iterator().next().getFirst();
+        return buildExplanationTreeAsJson(backtraceTable, root, 0, includeFreshConceptName);
+    }
+    public JSONObject explanationTreeAsJson(ReasoningDirectionConstant direction) { return explanationTreeAsJson(direction, true); }
+
+    private JSONObject buildExplanationTreeAsJson(BacktraceTable backtraceTable, TreeNode<Set<String>> node, int level, boolean includeFreshConceptName) {
+        if (!backtraceTable.getTable().containsKey(level)) return null;
+        SymmetricPair<TreeNode<Set<String>>> pair = backtraceTable.getTable().get(level).keySet().stream()
+                .filter(p -> p.getFirst().equals(node) || p.getSecond().equals(node))
+                .findFirst().orElse(null);
+        if (pair == null) return null;
+
+        TreeNode<Set<String>> comparingNode = pair.getFirst().equals(node) ? pair.getSecond() : pair.getFirst();
+        SimRecord simRecord = backtraceTable.getTable().get(level).get(pair);
+
+        String n1 = includeFreshConceptName ? node.getConceptName() : MyStringUtils.stripFresh(node.getConceptName());
+        String n2 = includeFreshConceptName ? comparingNode.getConceptName() : MyStringUtils.stripFresh(comparingNode.getConceptName());
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("comparingConcept1", n1);
+        jsonObject.put("comparingConcept2", n2);
+        jsonObject.put("deg", simRecord.getDeg());
+        jsonObject.put("pri", stripPairArray(simRecord.getPri(), includeFreshConceptName));
+        jsonObject.put("exi", stripPairArray(simRecord.getExi(), includeFreshConceptName));
+        jsonObject.put("emb", new JSONObject(simRecord.getEmb()));
+
+        List<JSONObject> childrenJson = new ArrayList<>();
+        for (TreeNode<Set<String>> child : node.getChildren()) {
+            JSONObject childJson = buildExplanationTreeAsJson(backtraceTable, child, level + 1, includeFreshConceptName);
+            if (childJson != null) childrenJson.add(childJson);
+        }
+        jsonObject.put("children", childrenJson);
+        return jsonObject;
+    }
+
+    private JSONArray stripPairArray(java.util.Set<SymmetricPair<String>> pairs, boolean includeFreshConceptName) {
+        List<String> out = new ArrayList<>();
+        for (SymmetricPair<String> p : pairs) {
+            if (includeFreshConceptName) {
+                out.add(p.toString());
+            } else {
+                out.add("(" + MyStringUtils.stripFresh(p.getFirst()) + ", " + MyStringUtils.stripFresh(p.getSecond()) + ")");
+            }
+        }
+        return new JSONArray(out);
     }
 
     /**
@@ -193,17 +217,7 @@ public class ExplanationService {
      * @param direction the reasoning direction (FORWARD or BACKWARD)
      * @return the JSON representation of the explanation tree
      */
-    public JSONObject explanationTreeAsJson(ReasoningDirectionConstant direction) {
-        BacktraceTable backtraceTable = getBacktraceTable(direction);
 
-        HashMap<SymmetricPair<TreeNode<Set<String>>>, SimRecord> levelMap = backtraceTable.getTable().get(0);
-        if (levelMap == null || levelMap.isEmpty()) {
-            return new JSONObject().put("error", "No data available at level 0.");
-        }
-
-        TreeNode<Set<String>> root = levelMap.keySet().iterator().next().getFirst();
-        return buildExplanationTreeAsJson(backtraceTable, root, 0);
-    }
 
     private JSONObject buildExplanationTreeAsJson(BacktraceTable backtraceTable, TreeNode<Set<String>> node, int level) {
         if (!backtraceTable.getTable().containsKey(level)) {

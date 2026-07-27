@@ -428,27 +428,25 @@ public class SimExplainer {
      * @return the tree hierarchy explanation as a string
      * @throws JSimPiException if no concepts are provided
      */
-    public String treeHierarchy(String... concepts) {
+    public String treeHierarchy(boolean includeFreshConceptName, String... concepts) {
         if (concepts == null || concepts.length == 0) {
             throw new JSimPiException("Concept not provided", ErrorCode.Application_IllegalArguments);
         }
-
         StringBuilder builder = new StringBuilder();
-
         for (String concept : concepts) {
             for (Map.Entry<ExplanationKey, ExplanationService> entry : explanationMap.entrySet()) {
-                ExplanationService explanationService = entry.getValue();
-
                 try {
-                    builder.append(explanationService.treeHierarchy(concept));
+                    builder.append(entry.getValue().treeHierarchy(concept, includeFreshConceptName));
                     break;
-                } catch (JSimPiException e) {
-                    // do nothing
-                }
+                } catch (JSimPiException e) { /* do nothing */ }
             }
         }
-
         return builder.toString();
+    }
+
+    // old varargs delegates, default true
+    public String treeHierarchy(String... concepts) {
+        return treeHierarchy(true, concepts);
     }
 
     /**
@@ -458,22 +456,19 @@ public class SimExplainer {
      * @return the tree hierarchy explanation as a JSON object
      * @throws JSimPiException if the concept is null
      */
-    public JSONObject treeHierarchyAsJson(String concept) {
-        if (concept == null) {
-            throw new JSimPiException("Concept not provided", ErrorCode.Application_IllegalArguments);
-        }
-
+    public JSONObject treeHierarchyAsJson(String concept, boolean includeFreshConceptName) {
+        if (concept == null) throw new JSimPiException("Concept not provided", ErrorCode.Application_IllegalArguments);
         for (Map.Entry<ExplanationKey, ExplanationService> entry : explanationMap.entrySet()) {
-            ExplanationService explanationService = entry.getValue();
-
             try {
-                return explanationService.treeHierarchyAsJson(concept);
-            } catch (JSimPiException e) {
-                // do nothing
-            }
+                return entry.getValue().treeHierarchyAsJson(concept, includeFreshConceptName);
+            } catch (JSimPiException e) { /* do nothing */ }
         }
-
         throw new JSimPiException("[" + concept + "] has not been processed yet", ErrorCode.Application_IllegalArguments);
+    }
+
+    // old overload delegates, default true
+    public JSONObject treeHierarchyAsJson(String concept) {
+        return treeHierarchyAsJson(concept, true);
     }
 
     /**
@@ -505,30 +500,35 @@ public class SimExplainer {
      * @throws JSimPiException if any of the concepts are null or if the similarity between the concepts
      *                          has not been calculated yet
      */
-    public Explanation getExplanation(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+    public Explanation getExplanation(String concept1, String concept2, ImplementationMethod method,
+                                    CombinationStrategy strategy, boolean includeFreshConceptName) {
         ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
-
         Map.Entry<ExplanationKey, ExplanationService> entry = explanationMap.entrySet().stream()
-                .filter(e -> e.getKey().equals(lookupKey))
-                .findFirst()
+                .filter(e -> e.getKey().equals(lookupKey)).findFirst()
                 .orElseThrow(() -> new JSimPiException("No explanation found...", ErrorCode.Application_IllegalArguments));
 
         ExplanationKey storedKey = entry.getKey();
         ExplanationService explanationService = entry.getValue();
-
         SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
         Explanation explanation = new Explanation();
         explanation.similarity = explanationService.getSimilarity();
 
         if (storedKey.pair().equalsOrder(pair)) {
-            explanation.forward = explanationService.explanationTree(ReasoningDirectionConstant.FORWARD);
-            explanation.backward = explanationService.explanationTree(ReasoningDirectionConstant.BACKWARD);
+            explanation.forward = explanationService.explanationTree(ReasoningDirectionConstant.FORWARD, includeFreshConceptName);
+            explanation.backward = explanationService.explanationTree(ReasoningDirectionConstant.BACKWARD, includeFreshConceptName);
         } else {
-            explanation.forward = explanationService.explanationTree(ReasoningDirectionConstant.BACKWARD);
-            explanation.backward = explanationService.explanationTree(ReasoningDirectionConstant.FORWARD);
+            explanation.forward = explanationService.explanationTree(ReasoningDirectionConstant.BACKWARD, includeFreshConceptName);
+            explanation.backward = explanationService.explanationTree(ReasoningDirectionConstant.FORWARD, includeFreshConceptName);
         }
-
         return explanation;
+    }
+
+    // old 4-arg version delegates, default TRUE (show fresh name)
+    public Explanation getExplanation(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        throw new JSimPiException(
+            "Please use getExplanation(concept1, concept2, method, strategy) since multiple methods " +
+            "may have been called for this concept pair.",
+            ErrorCode.Application_IllegalArguments);
     }
 
     // old overload for backward compatibility defaulting to AVERAGE:
@@ -567,30 +567,32 @@ public class SimExplainer {
      * @throws JSimPiException if any of the concepts are null or if the similarity between the concepts
      *                          has not been calculated yet
      */
-    public JSONObject getExplanationAsJson(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+    public JSONObject getExplanationAsJson(String concept1, String concept2, ImplementationMethod method,
+                                            CombinationStrategy strategy, boolean includeFreshConceptName) {
         ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
-
         Map.Entry<ExplanationKey, ExplanationService> entry = explanationMap.entrySet().stream()
-                .filter(e -> e.getKey().equals(lookupKey))
-                .findFirst()
+                .filter(e -> e.getKey().equals(lookupKey)).findFirst()
                 .orElseThrow(() -> new JSimPiException("No explanation found for [" + concept1 + "] and [" + concept2
-                        + "]. Call similarity() first.",
-                        ErrorCode.Application_IllegalArguments));
+                        + "]. Call similarity() first.", ErrorCode.Application_IllegalArguments));
 
         ExplanationKey storedKey = entry.getKey();
         ExplanationService explanationService = entry.getValue();
-
         JSONObject explanation = new JSONObject();
         explanation.put("similarity", explanationService.getSimilarity());
         SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
         if (storedKey.pair().equalsOrder(pair)) {
-            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
-            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
+            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD, includeFreshConceptName));
+            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD, includeFreshConceptName));
         } else {
-            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
-            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
+            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD, includeFreshConceptName));
+            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD, includeFreshConceptName));
         }
         return explanation;
+    }
+
+    // old overload delegates, default true
+    public JSONObject getExplanationAsJson(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        return getExplanationAsJson(concept1, concept2, method, strategy, true);
     }
 
     /**
@@ -636,29 +638,15 @@ public class SimExplainer {
      * @param concept2 the second concept
      * @return the explanation as natural language in JSON format
      */
-    public JSONObject getExplanationAsNaturalLanguage(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
-        ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
-
-        Map.Entry<ExplanationKey, ExplanationService> entry = explanationMap.entrySet().stream()
-                .filter(e -> e.getKey().equals(lookupKey))
-                .findFirst()
-                .orElseThrow(() -> new JSimPiException("No explanation found. Call similarity() first.",
-                        ErrorCode.Application_IllegalArguments));
-
-        ExplanationKey storedKey = entry.getKey();
-        ExplanationService explanationService = entry.getValue();
-
-        JSONObject explanation = new JSONObject();
-        explanation.put("similarity", explanationService.getSimilarity());
-        SymmetricPair<String> pair = new SymmetricPair<>(concept1, concept2);
-        if (storedKey.pair().equalsOrder(pair)) {
-            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
-            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
-        } else {
-            explanation.put("forward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.BACKWARD));
-            explanation.put("backward", explanationService.explanationTreeAsJson(ReasoningDirectionConstant.FORWARD));
-        }
+    public JSONObject getExplanationAsNaturalLanguage(String concept1, String concept2, ImplementationMethod method,
+                                                    CombinationStrategy strategy, boolean includeFreshConceptName) {
+        JSONObject explanation = getExplanationAsJson(concept1, concept2, method, strategy, includeFreshConceptName);
         return explanationConverterService.convertExplanationBiDirectionTree(explanation);
+    }
+
+    // old overload delegates, default true
+    public JSONObject getExplanationAsNaturalLanguage(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        return getExplanationAsNaturalLanguage(concept1, concept2, method, strategy, true);
     }
 
     /**

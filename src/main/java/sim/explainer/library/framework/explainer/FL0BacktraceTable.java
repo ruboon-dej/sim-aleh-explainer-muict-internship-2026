@@ -37,22 +37,26 @@ public class FL0BacktraceTable {
     public Map<String, FL0Record> getForwardRecords() { return forwardRecords; }
     public Map<String, FL0Record> getBackwardRecords() { return backwardRecords; }
 
-    public String printForward() {
-        return print(forwardConcept1, forwardConcept2, forwardDeg, forwardRecords);
+    public String printForward(boolean includeFreshConceptName) {
+        return print(forwardConcept1, forwardConcept2, forwardDeg, forwardRecords, includeFreshConceptName);
     }
 
-    public String printBackward() {
-        return print(backwardConcept1, backwardConcept2, backwardDeg, backwardRecords);
+    public String printBackward(boolean includeFreshConceptName) {
+        return print(backwardConcept1, backwardConcept2, backwardDeg, backwardRecords, includeFreshConceptName);
     }
 
-    private String print(String c1, String c2, BigDecimal deg, Map<String, FL0Record> records) {
+    // old no-arg methods now delegate, default = show fresh name
+    public String printForward() { return printForward(true); }
+    public String printBackward() { return printBackward(true); }
+
+    private String print(String c1, String c2, BigDecimal deg, Map<String, FL0Record> records, boolean includeFreshConceptName) {
         StringBuilder matched = new StringBuilder();
         StringBuilder missed = new StringBuilder();
 
         for (FL0Record r : records.values()) {
             StringBuilder target = r.isMatched() ? matched : missed;
             if (target.length() > 0) target.append(", ");
-            target.append(r.toString());
+            target.append(r.toString(includeFreshConceptName));
         }
 
         return "FL0Record{deg=" + deg + ", matched=[" + matched + "], missed=[" + missed + "]}";
