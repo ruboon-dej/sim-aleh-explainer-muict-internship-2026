@@ -68,7 +68,19 @@ public enum ErrorCode {
     ManchesterConceptSetHandler_IllegalArguments("ManchesterConceptSetHandler_IllegalArguments"),
     ManchesterTopLevelParserHandler_IllegalArguments("ManchesterTopLevelParserHandler_IllegalArguments"),
     ManchesterTopLevelParserHandler_InEquivalentParenthesisNumbers("ManchesterTopLevelParserHandler_InEquivalentParenthesisNumbers"),
-    ManchesterTopLevelParserHandler_InvalidSyntaxException("ManchesterTopLevelParserHandler_InvalidSyntaxException");
+    ManchesterTopLevelParserHandler_InvalidSyntaxException("ManchesterTopLevelParserHandler_InvalidSyntaxException"),
+
+    //ALC
+    ABoxServiceContext_IllegalArguments("ABoxServiceContext_IllegalArguments"),
+    ABoxServiceContext_FileNotFoundException("ABoxServiceContext_FileNotFoundException"),
+    ABoxServiceContext_IOException("ABoxServiceContext_IOException"),
+    ABoxServiceContext_UnknownIndividualException("ABoxServiceContext_UnknownIndividualException"),
+    ALCConceptTree_IllegalArguments("ALCConceptTree_IllegalArguments"),
+    ALCConceptTreeNode_IllegalArguments("ALCConceptTreeNode_IllegalArguments"),
+    ALCPreferenceProfile_IllegalArguments("ALCPreferenceProfile_IllegalArguments"),
+    OverlapReasoner_IllegalArguments("OverlapReasoner_IllegalArguments"),
+    ALCDisjunctionSplitterHandler_IllegalArguments("ALCDisjunctionSplitterHandler_IllegalArguments"),
+    MSCApproximator_IllegalArguments("MSCApproximator_IllegalArguments");
 
     private final String code;
 

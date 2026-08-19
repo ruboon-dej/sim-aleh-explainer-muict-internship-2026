@@ -23,6 +23,7 @@ import sim.explainer.library.framework.OWLServiceContext;
 import sim.explainer.library.framework.PreferenceProfile;
 import sim.explainer.library.framework.descriptiontree.Tree;
 import sim.explainer.library.framework.descriptiontree.TreeBuilder;
+import sim.explainer.library.framework.explainer.ALCExplanationTable;
 import sim.explainer.library.framework.explainer.BacktraceTable;
 import sim.explainer.library.framework.explainer.FL0BacktraceTable;
 import sim.explainer.library.framework.reasoner.DynamicALEHSimPiReasonerImpl;
@@ -31,6 +32,8 @@ import sim.explainer.library.framework.reasoner.DynamicProgrammingSimPiReasonerI
 import sim.explainer.library.framework.reasoner.DynamicProgrammingSimReasonerImpl;
 import sim.explainer.library.framework.reasoner.IFlatExplainableReasoner;
 import sim.explainer.library.framework.reasoner.IReasoner;
+import sim.explainer.library.framework.reasoner.OverlapReasoner;
+import sim.explainer.library.framework.reasoner.TopDownALCSimReasonerImpl;
 import sim.explainer.library.framework.reasoner.TopDownALEHSimPiReasonerImpl;
 import sim.explainer.library.framework.reasoner.TopDownALEHSimReasonerImpl;
 import sim.explainer.library.framework.reasoner.TopDownFL0SimPiReasonerImpl;
@@ -68,6 +71,7 @@ public class SimilarityService {
     private IReasoner topDownFL0SimPiReasonerImpl;
     private IReasoner dynamicFL0SimReasonerImpl;
     private IReasoner dynamicFL0SimPiReasonerImpl;
+    private IReasoner topDownALCSimReasonerImpl;
 
     private IConceptUnfolder conceptDefinitionUnfolderManchesterSyntax;
     private IConceptUnfolder conceptDefinitionUnfolderKRSSSyntax;
@@ -79,8 +83,9 @@ public class SimilarityService {
     private BacktraceTable backtraceTable_forward = new BacktraceTable();
     private BacktraceTable backtraceTable_backward = new BacktraceTable();
     private FL0BacktraceTable lastFlatExplanationTable;
+    private ALCExplanationTable lastALCExplanationTable;
 
-    public SimilarityService(OWLServiceContext owlServiceContext, KRSSServiceContext krssServiceContext, PreferenceProfile preferenceProfile) {
+    public SimilarityService(OWLServiceContext owlServiceContext, KRSSServiceContext krssServiceContext, PreferenceProfile preferenceProfile, OverlapReasoner overlapReasoner) {
         this.owlServiceContext = owlServiceContext;
         this.krssServiceContext = krssServiceContext;
         this.conceptDefinitionUnfolderManchesterSyntax = new ConceptDefinitionUnfolderManchesterSyntax(owlServiceContext);
@@ -95,6 +100,7 @@ public class SimilarityService {
         this.dynamicALEHSimReasonerImpl = new DynamicALEHSimReasonerImpl(preferenceProfile, superRoleUnfolderManchesterSyntax, subRoleUnfolderManchesterSyntax); 
         this.topDownFL0SimReasonerImpl = new TopDownFL0SimReasonerImpl();
         this.topDownFL0SimPiReasonerImpl = new TopDownFL0SimPiReasonerImpl(preferenceProfile);
+        this.topDownALCSimReasonerImpl = new TopDownALCSimReasonerImpl(overlapReasoner);
 
         this.topDownSimReasonerImpl = new TopDownSimReasonerImpl(preferenceProfile);
         this.topDownSimPiReasonerImpl = new TopDownSimPiReasonerImpl(preferenceProfile);
@@ -124,14 +130,20 @@ public class SimilarityService {
 
         if (iReasoner instanceof TopDownFL0SimReasonerImpl fl0) fl0.resetFl0BacktraceTable();
         if (iReasoner instanceof TopDownFL0SimPiReasonerImpl fl0Pi) fl0Pi.resetFl0BacktraceTable();
+        if (iReasoner instanceof TopDownALCSimReasonerImpl alc) alc.resetAlcExplanationTable();
 
         BigDecimal forwardDistance = iReasoner.measureDirectedSimilarity(tree1, tree2);
         this.backtraceTable_forward = iReasoner.getBacktraceTable();
         BigDecimal backwardDistance = iReasoner.measureDirectedSimilarity(tree2, tree1);
         this.backtraceTable_backward = iReasoner.getBacktraceTable();
-        
+
         if (iReasoner instanceof IFlatExplainableReasoner<?> flat) {
-            this.lastFlatExplanationTable = (FL0BacktraceTable) flat.getExplanationTable();
+            Object table = flat.getExplanationTable();
+            if (table instanceof FL0BacktraceTable fl0Table) {
+                this.lastFlatExplanationTable = fl0Table;
+            } else if (table instanceof ALCExplanationTable alcTable) {
+                this.lastALCExplanationTable = alcTable;
+            }
         }
 
         switch (strategy) {
@@ -209,7 +221,9 @@ public class SimilarityService {
             reasonerT = dynamicFL0SimReasonerImpl;
         } else if (measurementType == ImplementationMethod.DYNAMIC_FL0_SIMPI) {
             reasonerT = dynamicFL0SimPiReasonerImpl;
-        }else {
+        } else if (measurementType == ImplementationMethod.TOPDOWN_ALC_SIM) {
+            reasonerT = topDownALCSimReasonerImpl;
+        } else {
             throw new JSimPiException("Unable measure with this approach.", ErrorCode.OWLSimService_IllegalArguments);
         }
 
@@ -258,4 +272,5 @@ public class SimilarityService {
     }
 
     public FL0BacktraceTable getLastFlatExplanationTable() { return lastFlatExplanationTable; }
+    public ALCExplanationTable getLastALCExplanationTable() { return lastALCExplanationTable; }
 }

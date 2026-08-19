@@ -4,6 +4,8 @@ import sim.explainer.library.exception.ErrorCode;
 import sim.explainer.library.exception.JSimPiException;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Stack;
 
 public class ParserUtils {
@@ -57,6 +59,45 @@ public class ParserUtils {
         }
 
         return -1;
+    }
+
+    public static List<Integer> findTopLevelKeywordIndices(String concept, String keyword) {
+        if (concept == null || keyword == null) {
+            throw new JSimPiException("Unable to find top level keyword indices as concept or keyword is null.", ErrorCode.ParserUtils_IllegalArguments);
+        }
+
+        List<Integer> indices = new ArrayList<>();
+        int depth = 0;
+        int i = 0;
+        int keywordLength = keyword.length();
+
+        while (i < concept.length()) {
+            char c = concept.charAt(i);
+
+            if (c == OPEN_PARENTHESIS_CHAR) {
+                depth++;
+                i++;
+                continue;
+            }
+            if (c == CLOSE_PARENTHESIS_CHAR) {
+                depth--;
+                i++;
+                continue;
+            }
+
+            if (depth == 0 && i + keywordLength <= concept.length()
+                    && concept.regionMatches(true, i, keyword, 0, keywordLength)
+                    && (i == 0 || Character.isWhitespace(concept.charAt(i - 1)))
+                    && (i + keywordLength == concept.length() || Character.isWhitespace(concept.charAt(i + keywordLength)))) {
+                indices.add(i);
+                i += keywordLength;
+                continue;
+            }
+
+            i++;
+        }
+
+        return indices;
     }
 
     public static String generateFreshName(String name) {

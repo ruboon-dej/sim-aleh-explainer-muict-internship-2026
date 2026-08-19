@@ -27,11 +27,15 @@ import sim.explainer.library.enumeration.ImplementationMethod;
 import sim.explainer.library.enumeration.ReasoningDirectionConstant;
 import sim.explainer.library.exception.ErrorCode;
 import sim.explainer.library.exception.JSimPiException;
+import sim.explainer.library.framework.ABoxServiceContext;
+import sim.explainer.library.framework.ALCPreferenceProfile;
 import sim.explainer.library.framework.KRSSServiceContext;
 import sim.explainer.library.framework.OWLServiceContext;
 import sim.explainer.library.framework.PreferenceProfile;
+import sim.explainer.library.framework.explainer.ALCExplanationTable;
 import sim.explainer.library.framework.explainer.BacktraceTable;
 import sim.explainer.library.framework.explainer.FL0BacktraceTable;
+import sim.explainer.library.framework.reasoner.OverlapReasoner;
 import sim.explainer.library.service.ExplanationConverterService;
 import sim.explainer.library.service.ExplanationService;
 import sim.explainer.library.service.SimilarityService;
@@ -49,13 +53,17 @@ public class SimExplainer {
     private final PreferenceProfile preferenceProfile = new PreferenceProfile();
     private final OWLServiceContext owlServiceContext = new OWLServiceContext();
     private final KRSSServiceContext krssServiceContext = new KRSSServiceContext();
-    private final SimilarityService similarityService = new SimilarityService(owlServiceContext, krssServiceContext, preferenceProfile);
     private final ValidationService validationService = new ValidationService(owlServiceContext, krssServiceContext);
     private final ExplanationConverterService explanationConverterService = new ExplanationConverterService();
     private record ExplanationKey(SymmetricPair<String> pair, ImplementationMethod method, CombinationStrategy strategy) {}
     private final HashMap<ExplanationKey, ExplanationService> explanationMap = new HashMap<>();
     private final HashMap<ExplanationKey, FL0BacktraceTable> fl0ExplanationMap = new HashMap<>();
+    private final HashMap<ExplanationKey, ALCExplanationTable> alcExplanationMap = new HashMap<>();
     private final HashMap<ExplanationKey, BigDecimal> fl0SimilarityCache = new HashMap<>();
+    private final ALCPreferenceProfile alcPreferenceProfile = new ALCPreferenceProfile();
+    private final ABoxServiceContext aboxServiceContext = new ABoxServiceContext();
+    private final OverlapReasoner overlapReasoner = new OverlapReasoner(aboxServiceContext, alcPreferenceProfile);
+    private final SimilarityService similarityService = new SimilarityService(owlServiceContext, krssServiceContext, preferenceProfile, overlapReasoner);
 
     /**
      * Constructs a {@code SimExplainer} object and initializes it by loading ontologies and preference
@@ -216,6 +224,7 @@ public class SimExplainer {
         switch (fileType) {
             case OWL_FILE:
                 owlServiceContext.init(ontologyPath);
+                aboxServiceContext.initFromOWL(owlServiceContext);   // <-- add this line
                 break;
             case KRSS_FILE:
                 krssServiceContext.init(ontologyPath);
@@ -327,6 +336,7 @@ public class SimExplainer {
         explanationMap.clear();
         fl0ExplanationMap.clear();
         fl0SimilarityCache.clear();
+        alcExplanationMap.clear();
     }
 
     /**
@@ -371,10 +381,15 @@ public class SimExplainer {
                             || optionVal == ImplementationMethod.DYNAMIC_FL0_SIM
                             || optionVal == ImplementationMethod.DYNAMIC_FL0_SIMPI;
 
+                boolean isALC = optionVal == ImplementationMethod.TOPDOWN_ALC_SIM;
+
                 if (isFL0) {
                     FL0BacktraceTable fl0Table = similarityService.getLastFlatExplanationTable();
                     fl0ExplanationMap.put(key, fl0Table);
                     fl0SimilarityCache.put(key, result);
+                } else if (isALC) {
+                    ALCExplanationTable alcTable = similarityService.getLastALCExplanationTable();
+                    alcExplanationMap.put(key, alcTable);
                 } else {
                     List<BacktraceTable> backtraceTables = krssSimilarityController.getBacktraceTables();
                     addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
@@ -389,9 +404,15 @@ public class SimExplainer {
                             || optionVal == ImplementationMethod.DYNAMIC_FL0_SIM
                             || optionVal == ImplementationMethod.DYNAMIC_FL0_SIMPI;
 
+                boolean isALC = optionVal == ImplementationMethod.TOPDOWN_ALC_SIM;
+
                 if (isFL0) {
                     FL0BacktraceTable fl0Table = similarityService.getLastFlatExplanationTable();
                     fl0ExplanationMap.put(key, fl0Table);
+                    fl0SimilarityCache.put(key, result);
+                } else if (isALC) {
+                    ALCExplanationTable alcTable = similarityService.getLastALCExplanationTable();
+                    alcExplanationMap.put(key, alcTable);
                 } else {
                     List<BacktraceTable> backtraceTables = owlSimilarityController.getBacktraceTables();
                     addExplanationMap(concept1, concept2, result, backtraceTables.get(0), backtraceTables.get(1), optionVal, strategy);
@@ -548,6 +569,18 @@ public class SimExplainer {
                 .findFirst()
                 .orElseThrow(() -> new JSimPiException(
                         "No FL0 explanation found for [" + concept1 + "] and [" + concept2 + "]. Call similarity() first.",
+                        ErrorCode.Application_IllegalArguments));
+    }
+
+    public ALCExplanationTable getALCExplanation(String concept1, String concept2, ImplementationMethod method, CombinationStrategy strategy) {
+        ExplanationKey lookupKey = new ExplanationKey(new SymmetricPair<>(concept1, concept2), method, strategy);
+
+        return alcExplanationMap.entrySet().stream()
+                .filter(e -> e.getKey().equals(lookupKey))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElseThrow(() -> new JSimPiException(
+                        "No ALC explanation found for [" + concept1 + "] and [" + concept2 + "]. Call similarity() first.",
                         ErrorCode.Application_IllegalArguments));
     }
 

@@ -98,8 +98,7 @@ public class TopDownALEHSimReasonerImpl implements IReasoner {
     }
 
     protected BigDecimal dHat(String r) {
-        BigDecimal val = preferenceProfile.getRoleDiscountFactor().get(r);
-        return val != null ? val : new BigDecimal("0.4");
+        return new BigDecimal("0.4");
     }
 
     // e-hd (Eq.9 without preference)

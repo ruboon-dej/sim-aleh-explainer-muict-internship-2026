@@ -12,6 +12,7 @@ public class SimRecord {
     private HashSet<SymmetricPair<String>> pri = new HashSet<>(); // a set of primitives between 2 comparing concepts that derives deg.
     private HashSet<SymmetricPair<String>> exi = new HashSet<>(); // a set of existentials between 2 comparing existentials that derives deg.
     private HashSet<SymmetricPair<String>> uni = new HashSet<>(); //  a set of universals between 2 comparing universals that derives deg.
+    private HashSet<SymmetricPair<String>> dis = new HashSet<>(); // a set of disjuncts between 2 comparing concepts that derives deg.
     private HashMap<SymmetricPair<String>, Set<SymmetricPair<String>>> emb = new HashMap<>(); // a set of embeddings in embedding space that derives deg.
 
     public SimRecord() {
@@ -31,6 +32,10 @@ public class SimRecord {
 
     public HashSet<SymmetricPair<String>> getUni() {
         return uni;
+    }
+
+    public HashSet<SymmetricPair<String>> getDis() {
+        return dis;
     }
 
     public HashMap<SymmetricPair<String>, Set<SymmetricPair<String>>> getEmb() {
@@ -56,6 +61,11 @@ public class SimRecord {
         this.uni.add(pair);
     }
 
+    public void appendDis(String dis1, String dis2) {
+        SymmetricPair<String> pair = new SymmetricPair<>(dis1, dis2);
+        this.dis.add(pair);
+    }
+
     public void appendEmb(String name1, String name2, String value1, String value2) {
         SymmetricPair<String> pairName = new SymmetricPair<>(name1, name2);
         SymmetricPair<String> pairEmb = new SymmetricPair<>(value1, value2);
@@ -79,7 +89,7 @@ public class SimRecord {
 
     @Override
     public String toString() {
-        return String.format("SimRecord{deg=%s, pri=%s, exi=%s, uni=%s, emb=%s}",
-                deg, pri, exi, uni, emb);
+        return String.format("SimRecord{deg=%s, pri=%s, exi=%s, uni=%s, dis=%s, emb=%s}",
+                deg, pri, exi, uni, dis, emb);
     }
 }

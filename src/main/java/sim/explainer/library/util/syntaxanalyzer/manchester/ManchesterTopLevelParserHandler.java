@@ -49,109 +49,78 @@ public class ManchesterTopLevelParserHandler extends ParserHandler {
 
             String group = StringUtils.substring(compactFormat, beginParenthesis, lastParenthesis + 1);
 
-            // If compactFormat contains existential restrictions
-            if (StringUtils.contains(group, EXISTENTIAL_RESTRICTION_SYMBOL)) {
+            String groupStr = StringUtils.replacePattern(group, "\\(", "\\\\(");
+            groupStr = StringUtils.replacePattern(groupStr, "\\)", "\\\\)");
 
-                // Transform to String literals
-                String groupStr = StringUtils.replacePattern(group, "\\(", "\\\\(");
-                groupStr = StringUtils.replacePattern(groupStr, "\\)", "\\\\)");
+            // Precise, boundary-anchored dispatch only - never "does this group merely
+            // CONTAIN the keyword somewhere inside it". That was the actual bug: once a
+            // disjunct inside a union filler gets unfolded, its own nested restrictions
+            // (e.g. a buried "hasSpiciness some Mild") make the group's raw text contain
+            // "some" even though the group itself is really the filler of an outer
+            // "only (...)" - the unanchored check misrouted it into the existential
+            // branch, which fell through and silently flattened the whole disjunction.
+            String strippedGroup = MyStringUtils.removeCharactersFrom(group, 0, group.length() - 2);
 
+            boolean roleSomeThisGroup = Pattern.compile(PATTERN_NAME_SOME + groupStr).matcher(compactFormat).find();
+            boolean roleOnlyThisGroup = Pattern.compile(PATTERN_NAME_ONLY + groupStr).matcher(compactFormat).find();
+            boolean groupWrapsRoleSome = Pattern.compile("^" + PATTERN_NAME_SOME_NAME).matcher(strippedGroup).find();
+            boolean groupWrapsRoleOnly = Pattern.compile("^" + PATTERN_NAME_ONLY_NAME).matcher(strippedGroup).find();
+
+            // "role some (group)" - the whole group is this role's existential filler
+            if (roleSomeThisGroup) {
                 String patternStr = PATTERN_NAME_SOME + groupStr;
-                Pattern pattern = Pattern.compile(patternStr);
-                Matcher matcher = pattern.matcher(compactFormat);
+                Matcher matcher = Pattern.compile(patternStr).matcher(compactFormat);
+                matcher.find();
+                String role = storeRoleAndNestedConceptPair(context, matcher.group());
+                String roleForm = ParserUtils.convertToRoleForm(role);
 
-                // If compactFormat is already in a form of "role some (concept)"
-                if (matcher.find()) {
-                    String role = storeRoleAndNestedConceptPair(context, matcher.group());
-                    String roleForm = ParserUtils.convertToRoleForm(role);
-
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("1. compactFormat is already in a form of \"role some (concept)\".");
-                    }
-
-                    return compactFormat.replaceFirst(patternStr, roleForm);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("1. compactFormat is already in a form of \"role some (concept)\".");
                 }
 
-                // Proceed to check if compactFormat is already in a form of "(role some concept)"
-                else {
-
-                    String str = MyStringUtils.removeCharactersFrom(group, 0, group.length() - 2);
-
-                    pattern = Pattern.compile(PATTERN_NAME_SOME_NAME);
-                    matcher = pattern.matcher(str);
-
-                    // If so, just store role and nested concept
-                    if(matcher.find()) {
-                        String role = storeRoleAndNestedConceptPair(context, str);
-                        String roleForm = ParserUtils.convertToRoleForm(role);
-
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("2. compactFormat is already in a form of \"(role some concept)\".");
-                        }
-
-                        return compactFormat.replaceFirst(groupStr, roleForm);
-                    }
-
-                    // Otherwise, there exist nested parenthesises.
-                    // Hence, just remove them
-                    else {
-
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("3. compactFormat contains nested parenthesises.");
-                        }
-
-                        return MyStringUtils.removeCharactersFrom(compactFormat, beginParenthesis, lastParenthesis - 1);
-                    }
-
-                }
+                return compactFormat.replaceFirst(patternStr, roleForm);
             }
-            else if (StringUtils.contains(group, UNIVERSAL_RESTRICTION_SYMBOL)) {
-                String groupStr = StringUtils.replacePattern(group, "\\(", "\\\\(");
-                groupStr = StringUtils.replacePattern(groupStr, "\\)", "\\\\)");
+
+            // "role only (group)" - the whole group is this role's universal filler
+            else if (roleOnlyThisGroup) {
                 String patternStr = PATTERN_NAME_ONLY + groupStr;
-                Pattern pattern = Pattern.compile(patternStr);
-                Matcher matcher = pattern.matcher(compactFormat);
+                Matcher matcher = Pattern.compile(patternStr).matcher(compactFormat);
+                matcher.find();
+                String role = storeRoleAndNestedUniversalConceptPair(context, matcher.group());
+                String roleForm = ParserUtils.convertToRoleForm(role);
 
-                // If compactFormat is already in a form of "role only (concept)"
-                if (matcher.find()) {
-                    String role = storeRoleAndNestedUniversalConceptPair(context, matcher.group());
-                    String roleForm = ParserUtils.convertToRoleForm(role);
-
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("2b. compactFormat is already in a form of \"role only (concept)\".");
-                    }
-
-                    return compactFormat.replaceFirst(patternStr, roleForm);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("2b. compactFormat is already in a form of \"role only (concept)\".");
                 }
 
-                else {
-                    String str = MyStringUtils.removeCharactersFrom(group, 0, group.length() - 2);
+                return compactFormat.replaceFirst(patternStr, roleForm);
+            }
 
-                    pattern = Pattern.compile(PATTERN_NAME_ONLY_NAME);
-                    matcher = pattern.matcher(str);
+            // "(role some concept)" - role and restriction wrapped together in one group
+            else if (groupWrapsRoleSome) {
+                String role = storeRoleAndNestedConceptPair(context, strippedGroup);
+                String roleForm = ParserUtils.convertToRoleForm(role);
 
-                    if (matcher.find()) {
-                        String role = storeRoleAndNestedUniversalConceptPair(context, str);
-                        String roleForm = ParserUtils.convertToRoleForm(role);
-
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("2c. compactFormat is already in a form of \"(role only concept)\".");
-                        }
-
-                        return compactFormat.replaceFirst(groupStr, roleForm);
-                    }
-
-                    else {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("2d. compactFormat contains nested parenthesises inside \"only\".");
-                        }
-
-                        return MyStringUtils.removeCharactersFrom(compactFormat, beginParenthesis, lastParenthesis - 1);
-                    }
+                if (logger.isDebugEnabled()) {
+                    logger.debug("2. compactFormat is already in a form of \"(role some concept)\".");
                 }
-            } 
 
-            // Otherwise, it is in a form of "(primitive and primitive)"
+                return compactFormat.replaceFirst(groupStr, roleForm);
+            }
+
+            // "(role only concept)" - role and restriction wrapped together in one group
+            else if (groupWrapsRoleOnly) {
+                String role = storeRoleAndNestedUniversalConceptPair(context, strippedGroup);
+                String roleForm = ParserUtils.convertToRoleForm(role);
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("2c. compactFormat is already in a form of \"(role only concept)\".");
+                }
+
+                return compactFormat.replaceFirst(groupStr, roleForm);
+            }
+
+            // Otherwise, it is in a form of "(primitive and primitive)" - just unwrap it
             else {
 
                 if (logger.isDebugEnabled()) {

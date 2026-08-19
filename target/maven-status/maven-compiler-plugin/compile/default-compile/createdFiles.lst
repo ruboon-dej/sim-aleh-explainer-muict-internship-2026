@@ -5,6 +5,7 @@ sim/explainer/library/framework/reasoner/TopDownSimPiReasonerImpl.class
 sim/explainer/library/enumeration/OWLConstant.class
 sim/explainer/library/framework/explainer/FL0BacktraceTable.class
 sim/explainer/library/util/syntaxanalyzer/Handler.class
+sim/explainer/library/framework/ALCPreferenceProfile.class
 sim/explainer/library/service/SimilarityService.class
 sim/explainer/library/util/utilstructure/SymmetricPair.class
 sim/explainer/library/framework/OWLServiceContext.class
@@ -14,6 +15,7 @@ sim/explainer/library/util/syntaxanalyzer/HandlerContextImpl.class
 sim/explainer/library/framework/reasoner/TopDownALEHSimReasonerImpl.class
 sim/explainer/library/enumeration/CombinationStrategy.class
 sim/explainer/library/framework/reasoner/DynamicALEHSimReasonerImpl.class
+sim/explainer/library/framework/ABoxServiceContext.class
 sim/explainer/library/framework/unfolding/SuperRoleUnfolderManchesterSyntax.class
 sim/explainer/library/Application.class
 sim/explainer/library/framework/unfolding/ConceptDefinitionUnfolderManchesterSyntax.class
@@ -25,10 +27,13 @@ sim/explainer/library/SimExplainer$ExplanationKey.class
 sim/explainer/library/util/syntaxanalyzer/ChainOfResponsibilityHandler.class
 sim/explainer/library/framework/unfolding/SubRoleUnfolderKRSSSyntax.class
 sim/explainer/library/framework/descriptiontree/Tree.class
+sim/explainer/library/framework/reasoner/MSCApproximator.class
+sim/explainer/library/framework/explainer/ALCExplanationRecord.class
 sim/explainer/library/framework/unfolding/ISubRoleUnfolder.class
 sim/explainer/library/util/OWLConceptDefinitionUtil.class
 sim/explainer/library/util/MyStringUtils.class
 sim/explainer/library/util/syntaxanalyzer/KRSSHandlerContextImpl.class
+sim/explainer/library/util/syntaxanalyzer/ALCDisjunctionSplitterHandler.class
 sim/explainer/library/framework/reasoner/DynamicProgrammingSimReasonerImpl.class
 sim/explainer/library/framework/reasoner/TopDownFL0SimReasonerImpl.class
 sim/explainer/library/framework/unfolding/IRoleUnfolder.class
@@ -37,9 +42,14 @@ sim/explainer/library/enumeration/TraversalStrategy.class
 sim/explainer/library/controller/OWLSimilarityController.class
 sim/explainer/library/framework/descriptiontree/TreeBuilder.class
 sim/explainer/library/framework/reasoner/TopDownSimReasonerImpl.class
+sim/explainer/library/framework/explainer/ALCExplanationTable.class
 sim/explainer/library/util/ExceptionUtil.class
 sim/explainer/library/util/OWLOntologyUtil.class
 sim/explainer/library/util/TimeUtils.class
+sim/explainer/library/framework/explainer/ALCExplanationResult.class
+sim/explainer/library/framework/reasoner/OverlapReasoner.class
+sim/explainer/library/framework/conceptTree/ALCConceptTreeNode.class
+sim/explainer/library/enumeration/ALCReasoningTarget.class
 sim/explainer/library/framework/unfolding/IConceptUnfolder.class
 sim/explainer/library/util/ParserUtils.class
 sim/explainer/library/enumeration/FileTypeConstant.class
@@ -47,6 +57,8 @@ sim/explainer/library/framework/explainer/FL0Record.class
 sim/explainer/library/SimExplainer.class
 sim/explainer/library/framework/unfolding/ConceptDefinitionUnfolderKRSSSyntax.class
 sim/explainer/library/controller/KRSSSimilarityController.class
+sim/explainer/library/framework/explainer/ALCExplanationRecord$Branch.class
+sim/explainer/library/framework/conceptTree/ALCConceptTree.class
 sim/explainer/library/util/syntaxanalyzer/manchester/ManchesterConceptSetHandler.class
 sim/explainer/library/service/ExplanationConverterService.class
 sim/explainer/library/framework/unfolding/SuperRoleUnfolderKRSSSyntax.class
@@ -61,6 +73,7 @@ sim/explainer/library/enumeration/ImplementationMethod.class
 sim/explainer/library/SimExplainer$1.class
 sim/explainer/library/framework/reasoner/DynamicALEHSimPiReasonerImpl.class
 sim/explainer/library/util/syntaxanalyzer/krss/KRSSTopLevelParserHandler.class
+sim/explainer/library/framework/reasoner/TopDownALCSimReasonerImpl.class
 sim/explainer/library/util/syntaxanalyzer/IChainOfResponsibilityContext.class
 sim/explainer/library/service/ValidationService.class
 sim/explainer/library/util/syntaxanalyzer/ParserHandlerImpl.class
@@ -70,6 +83,7 @@ sim/explainer/library/framework/KRSSServiceContext.class
 sim/explainer/library/util/syntaxanalyzer/manchester/ManchesterTopLevelParserHandler.class
 sim/explainer/library/enumeration/ReasonerParameters.class
 sim/explainer/library/service/SimilarityService$1.class
+sim/explainer/library/framework/explainer/ALCBidirectionalExplanationResult.class
 sim/explainer/library/exception/JSimPiException.class
 sim/explainer/library/framework/descriptiontree/Tree$1.class
 sim/explainer/library/framework/reasoner/TopDownALEHSimPiReasonerImpl.class

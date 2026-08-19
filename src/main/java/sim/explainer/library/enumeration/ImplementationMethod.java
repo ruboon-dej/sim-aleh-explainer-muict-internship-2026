@@ -12,7 +12,8 @@ public enum ImplementationMethod {
     DYNAMIC_FL0_SIM("dynamic programming FL0 Sim"),
     DYNAMIC_FL0_SIMPI("dynamic programming FL0 SimPi"),
     TOPDOWN_FL0_SIM("top down FL0 Sim"),
-    TOPDOWN_FL0_SIMPI("top down FL0 SimPi");
+    TOPDOWN_FL0_SIMPI("top down FL0 SimPi"),
+    TOPDOWN_ALC_SIM("top down ALC Sim");
 
     private final String description;
 

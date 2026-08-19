@@ -1,0 +1,6 @@
+sim/explainer/library/framework/reasoner/MSCApproximatorTest.class
+sim/explainer/library/framework/reasoner/TopDownALCSimReasonerImplTest.class
+sim/explainer/library/framework/reasoner/OverlapReasonerTest.class
+sim/explainer/library/util/syntaxanalyzer/ALCDisjunctionSplitterHandlerTest.class
+sim/explainer/library/util/syntaxanalyzer/manchester/ManchesterTopLevelParserHandlerTest.class
+sim/explainer/library/framework/descriptiontree/TreeBuilderTest.class

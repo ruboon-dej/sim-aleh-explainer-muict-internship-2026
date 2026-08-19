@@ -128,6 +128,16 @@ public class TreeNode<T> {
         return newNode;
     }
 
+    public List<TreeNode<T>> getDisjunctChildren() {
+        List<TreeNode<T>> result = new LinkedList<>();
+        for (TreeNode<T> child : this.children) {
+            if ("DISJUNCT".equals(child.edgeType)) {
+                result.add(child);
+            }
+        }
+        return result;
+    }
+
     public void setEdgeToParent(String edgeToParent) {
         this.edgeToParent = edgeToParent;
     }
